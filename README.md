@@ -7,6 +7,7 @@
   <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=18&duration=3000&pause=1000&color=FF2A3D&background=00000000&center=true&vCenter=true&width=480&lines=Spicetify+custom+apps;Glitch+visualizers+%26+synced+lyrics;AMOLED+black+%2B+a+little+red" alt="typing" />
 </p>
 ---
+
 ### 👋 About me
 
 - 🎧 I make custom apps for Spotify with **Spicetify**
