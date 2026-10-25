@@ -3,7 +3,7 @@
 &nbsp;
 
 <p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:000000,100:ff2a3d&height=160&section=header&text=oyaa&fontColor=ffffff&fontSize=56&fontAlignY=38" alt="oyaa" />
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:000000,100:ff2a3d&height=160&section=header&text=oyaa&fontColor=ffffff&fontSize=56&fontAlignY=38" alt="oyaa-viz" />
 </p>
 
 &nbsp;
