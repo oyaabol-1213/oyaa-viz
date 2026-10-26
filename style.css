@@ -1,0 +1,28 @@
+.Root__main-view:has(.oyaa),
+.main-view-container:has(.oyaa),
+.main-view-container__scroll-node-child:has(.oyaa),
+.main-view-container__scroll-node:has(.oyaa) { background: #000 !important; }
+
+.oyaa { position: relative; display: flex; flex-direction: column; height: 100%; min-height: calc(100vh - 130px); background: #000; color: #fff; font-family: "Segoe UI", Inter, system-ui, sans-serif; overflow: hidden; }
+.oyaa-top { display: flex; align-items: center; gap: 8px; padding: 14px 20px 6px; }
+.oyaa-title { flex: 1; min-width: 0; font-size: 12px; letter-spacing: .15em; text-transform: uppercase; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oyaa-btn { background: transparent; color: #aaa; border: 1px solid #2a2a2a; border-radius: 4px; padding: 5px 10px; font-size: 11px; letter-spacing: .1em; cursor: pointer; text-transform: uppercase; }
+.oyaa-btn:hover { color: #fff; border-color: #555; }
+.oyaa-btn.on { color: #fff; border-color: #ff2a3d; }
+.oyaa-body { flex: 1; display: flex; min-height: 0; gap: 40px; padding: 10px 28px 28px; }
+.oyaa-left { flex: 0 0 40%; max-width: 520px; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.oyaa-viz { position: relative; width: min(100%, calc(100vh - 360px)); min-width: 220px; aspect-ratio: 1 / 1; border: 1px solid #1c1c1c; }
+.oyaa-name { margin-top: 16px; font-size: 18px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oyaa-artist { margin-top: 4px; font-size: 13px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oyaa-viz canvas { position: absolute; inset: 0; display: block; }
+.oyaa-lyrics { flex: 1; min-width: 0; position: relative; overflow: hidden; -webkit-mask-image: linear-gradient(transparent 0, #000 22%, #000 78%, transparent 100%); mask-image: linear-gradient(transparent 0, #000 22%, #000 78%, transparent 100%); }
+.oyaa-scroll { position: absolute; left: 0; right: 0; top: 0; padding: 0 2%; text-align: left; will-change: transform; transition: transform .45s cubic-bezier(.2,.8,.2,1); }
+.ln { --p: 0; margin: 14px 0; font-size: clamp(20px, 2.8vw, 38px); font-weight: 800; line-height: 1.25; color: rgba(255,255,255,.2); cursor: pointer; transition: color .3s, opacity .3s; }
+.ln.past { color: #6b0d18; }
+.ln.active { color: transparent; background: linear-gradient(to bottom, #ff6b6b 0%, #ff1f3a calc(var(--p) * 1%), rgba(255,255,255,.22) calc(var(--p) * 1%)); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 10px rgba(255,30,60,.75)); }
+.oyaa-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #666; font-size: 13px; letter-spacing: .08em; text-align: center; padding: 0 20px; }
+.oyaa-modal { position: absolute; inset: 0; z-index: 5; background: rgba(0,0,0,.94); display: flex; flex-direction: column; gap: 10px; padding: 20px; }
+.oyaa-modal textarea { flex: 1; background: #050505; color: #eee; border: 1px solid #2a2a2a; border-radius: 6px; padding: 12px; font: 13px/1.5 Consolas, monospace; resize: none; outline: none; }
+.oyaa-modal textarea:focus { border-color: #ff2a3d; }
+.oyaa-hint { font-size: 11px; color: #777; line-height: 1.5; }
+.oyaa-row { display: flex; gap: 8px; justify-content: flex-end; }
