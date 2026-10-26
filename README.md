@@ -37,7 +37,11 @@
 ## Features
 
 - Glitch spectrum visualizer with "oyaa-viz" inside, switch between **red** and **white**  
-- Synced lyrics from Spotify, with a glowing red karaoke fill that sweeps top to bottom  
+- Synced lyrics from Spotify with **word-by-word karaoke**: the word being sung fills left to right and glows  
+- The glow pulses with the music, and flashes on every new word  
+- **RED** / **WHITE** recolor the visualizer *and* the lyrics  
+- Built-in **LRC maker**: stamp your own lyrics while the song plays  
+- Per-song **sync offset** (− / + in the top bar) if the lyrics run early or late  
 - Song has no lyrics? Add your own with **EDIT LYRICS**  
 - Click any lyric line to jump to it  
 - Pure black AMOLED background, light on resources
@@ -91,9 +95,10 @@ Spotify restarts, and you'll see the **oyaa-viz** icon in the left sidebar.
 ### Step 4: Use it
 
 1. Play a song and open oyaa-viz from the sidebar.  
-2. Press **RED** or **WHITE** to change the visualizer color. It remembers your choice.  
+2. Press **RED** or **WHITE** to change the visualizer and lyric color. It remembers your choice.  
 3. Lyrics from Spotify show automatically and follow the song.  
-4. Click a lyric line to seek to that part of the song.
+4. Click a lyric line to seek to that part of the song.  
+5. Lyrics too early or too late? Use **−** / **+** in the top bar (0.1s per click). The number resets it. It is saved per song.
 
 ### Adding your own lyrics
 
@@ -120,6 +125,20 @@ Third line
 
 3. Press **SAVE**. Your lyrics are saved for that song only.  
 4. To go back to Spotify's lyrics, open **EDIT LYRICS** and press **USE SPOTIFY LYRICS**.
+
+### LRC maker (stamp lyrics while the song plays)
+
+1. Press **EDIT LYRICS**, paste plain lyrics (one line per row), then press **LRC MAKER**.  
+2. Play the song. Press **ENTER** (or **TAP**) the moment each line starts. The next line is selected automatically.  
+3. Made a mistake? **Backspace** (or **UNDO**) removes the last stamp and rewinds 2.5 seconds so you can redo it. Click any line to re-stamp it. **−** / **+** on a line nudges it by 0.1s.  
+4. **←** / **→** jump 5 seconds. Taps are placed 0.15s early to cover your reaction time.  
+5. Press **SAVE**. Lines without a stamp are left out.
+
+Word timing is estimated from the line timing. If you want exact words, write them by hand in the TEXT tab:
+
+```
+[00:12.00] <00:12.00>First <00:12.50>line <00:13.10>here
+```
 
 ### Updating
 
@@ -158,7 +177,7 @@ spicetify backup apply
 
 **No lyrics show for a song** Not every song has lyrics on Spotify. Use **EDIT LYRICS** to add your own.
 
-**Visualizer doesn't react to the music** The spectrum uses Spotify's audio analysis data. When that isn't available for a track, it shows a generic animation instead.
+**Visualizer doesn't react to the music** The spectrum uses Spotify's audio analysis data. The top bar says `spectrum · analysis` when it is in use and `spectrum · generic` when it isn't. In generic mode it shows a steady pulse that also bumps on every sung word, so the lyrics still drive it.
 
 ---
 
@@ -178,8 +197,7 @@ spicetify backup apply
 ### 📊 GitHub stats
 
 <p>
-  <img height="165" src="https://github-readme-stats.v
-ercel.app/api?username=oyaabol-1213&show_icons=true&hide_border=true&bg_color=000000&title_color=ff2a3d&text_color=ffffff&icon_color=ff2a3d&ring_color=ff2a3d" />
+  <img height="165" src="https://github-readme-stats.vercel.app/api?username=oyaabol-1213&show_icons=true&hide_border=true&bg_color=000000&title_color=ff2a3d&text_color=ffffff&icon_color=ff2a3d&ring_color=ff2a3d" />
   <img height="165" src="https://github-readme-stats.vercel.app/api/top-langs/?username=oyaabol-1213&layout=compact&hide_border=true&bg_color=000000&title_color=ff2a3d&text_color=ffffff" />
 </p>
 

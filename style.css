@@ -3,12 +3,20 @@
 .main-view-container__scroll-node-child:has(.oyaa),
 .main-view-container__scroll-node:has(.oyaa) { background: #000 !important; }
 
+/* theme: the RED / WHITE buttons set .red or .white on the root */
+.oyaa { --c: #ff2a3d; --cd: #6b0d18; --g: 255, 30, 60; --dim: rgba(255,255,255,.28); }
+.oyaa.white { --c: #ffffff; --cd: #5c5c5c; --g: 255, 255, 255; }
+
 .oyaa { position: relative; display: flex; flex-direction: column; height: 100%; min-height: calc(100vh - 130px); background: #000; color: #fff; font-family: "Segoe UI", Inter, system-ui, sans-serif; overflow: hidden; }
 .oyaa-top { display: flex; align-items: center; gap: 8px; padding: 14px 20px 6px; }
 .oyaa-title { flex: 1; min-width: 0; font-size: 12px; letter-spacing: .15em; text-transform: uppercase; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .oyaa-btn { background: transparent; color: #aaa; border: 1px solid #2a2a2a; border-radius: 4px; padding: 5px 10px; font-size: 11px; letter-spacing: .1em; cursor: pointer; text-transform: uppercase; }
 .oyaa-btn:hover { color: #fff; border-color: #555; }
-.oyaa-btn.on { color: #fff; border-color: #ff2a3d; }
+.oyaa-btn:disabled { opacity: .35; cursor: default; }
+.oyaa-btn.on { color: #fff; border-color: var(--c); }
+.oyaa-btn.ghost { border-color: transparent; min-width: 52px; padding: 5px 4px; color: #888; }
+.oyaa-sync { display: flex; align-items: center; gap: 2px; margin-right: 6px; }
+.oyaa-sync .oyaa-btn:not(.ghost) { padding: 5px 8px; }
 .oyaa-body { flex: 1; display: flex; min-height: 0; gap: 40px; padding: 10px 28px 28px; }
 .oyaa-left { flex: 0 0 40%; max-width: 520px; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
 .oyaa-viz { position: relative; width: min(100%, calc(100vh - 360px)); min-width: 220px; aspect-ratio: 1 / 1; border: 1px solid #1c1c1c; }
@@ -17,12 +25,41 @@
 .oyaa-viz canvas { position: absolute; inset: 0; display: block; }
 .oyaa-lyrics { flex: 1; min-width: 0; position: relative; overflow: hidden; -webkit-mask-image: linear-gradient(transparent 0, #000 22%, #000 78%, transparent 100%); mask-image: linear-gradient(transparent 0, #000 22%, #000 78%, transparent 100%); }
 .oyaa-scroll { position: absolute; left: 0; right: 0; top: 0; padding: 0 2%; text-align: left; will-change: transform; transition: transform .45s cubic-bezier(.2,.8,.2,1); }
-.ln { --p: 0; margin: 14px 0; font-size: clamp(20px, 2.8vw, 38px); font-weight: 800; line-height: 1.25; color: rgba(255,255,255,.2); cursor: pointer; transition: color .3s, opacity .3s; }
-.ln.past { color: #6b0d18; }
-.ln.active { color: transparent; background: linear-gradient(to bottom, #ff6b6b 0%, #ff1f3a calc(var(--p) * 1%), rgba(255,255,255,.22) calc(var(--p) * 1%)); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 10px rgba(255,30,60,.75)); }
+
+/* lyrics: --e (0..1) is the glow strength, set on the active line only. --p (0..100) is how much of a word is sung. */
+.ln { margin: 14px 0; font-size: clamp(20px, 2.8vw, 38px); font-weight: 800; line-height: 1.25; color: rgba(255,255,255,.2); cursor: pointer; transition: color .3s; }
+.ln.past { color: var(--cd); }
+.ln.active { --e: 0; color: var(--dim); }
+.w { --p: 0; }
+/* already sung: solid color with a soft glow that follows the music */
+.ln.active .w.d { color: var(--c); text-shadow: 0 0 calc(4px + var(--e) * 14px) rgba(var(--g), calc(.3 + var(--e) * .5)); }
+/* being sung right now: fills left to right, brightest glow */
+.ln.active .w.c { color: transparent; background: linear-gradient(to right, var(--c) calc(var(--p) * 1%), var(--dim) calc(var(--p) * 1%)); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 calc(6px + var(--e) * 16px) rgba(var(--g), calc(.55 + var(--e) * .45))); }
+
 .oyaa-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #666; font-size: 13px; letter-spacing: .08em; text-align: center; padding: 0 20px; }
-.oyaa-modal { position: absolute; inset: 0; z-index: 5; background: rgba(0,0,0,.94); display: flex; flex-direction: column; gap: 10px; padding: 20px; }
+.oyaa-modal { position: absolute; inset: 0; z-index: 5; background: #000; display: flex; flex-direction: column; gap: 10px; padding: 20px; }
 .oyaa-modal textarea { flex: 1; background: #050505; color: #eee; border: 1px solid #2a2a2a; border-radius: 6px; padding: 12px; font: 13px/1.5 Consolas, monospace; resize: none; outline: none; }
-.oyaa-modal textarea:focus { border-color: #ff2a3d; }
+.oyaa-modal textarea:focus { border-color: var(--c); }
 .oyaa-hint { font-size: 11px; color: #777; line-height: 1.5; }
 .oyaa-row { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* LRC maker */
+.mk-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mk-clock { font: 600 20px Consolas, monospace; color: var(--c); letter-spacing: .05em; min-width: 98px; }
+.mk-stat { flex: 1; min-width: 80px; font-size: 11px; color: #777; letter-spacing: .08em; text-transform: uppercase; }
+.oyaa-btn.big { padding: 9px 22px; font-size: 13px; color: #fff; border-color: var(--c); }
+.mk-next { flex: 1; min-width: 0; font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-list { flex: 1; min-height: 0; position: relative; overflow-y: auto; background: #050505; border: 1px solid #1c1c1c; border-radius: 6px; padding: 6px; }
+.mk-list::-webkit-scrollbar { width: 6px; }
+.mk-list::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+.mk-row { display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-radius: 4px; font-size: 13px; color: #888; cursor: pointer; }
+.mk-row:hover { background: #0d0d0d; }
+.mk-row.play { color: #fff; }
+.mk-row.cur { background: #111; outline: 1px solid var(--c); color: #fff; }
+.mk-t { flex: 0 0 74px; font: 12px Consolas, monospace; color: var(--c); }
+.mk-t.none { color: #444; }
+.mk-x { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-nudge { display: flex; gap: 4px; opacity: 0; }
+.mk-row:hover .mk-nudge, .mk-row.cur .mk-nudge { opacity: 1; }
+.mk-n { background: transparent; color: #aaa; border: 1px solid #2a2a2a; border-radius: 3px; width: 22px; height: 20px; line-height: 1; cursor: pointer; font-size: 13px; padding: 0; }
+.mk-n:hover { color: #fff; border-color: #666; }
