@@ -3,6 +3,7 @@
   "description": "Glitch audio spectrum visualizer with synced karaoke lyrics. AMOLED black, red or white.",
   "preview": "preview.png",
   "main": "index.js",
+  "readme": "README.md",
   "readme": "https://raw.githubusercontent.com/oyaabol-1213/oyaa-viz/main/README.md",
   "authors": [
     {
