@@ -1,0 +1,53 @@
+
+name: Build and Release oyaa-viz
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: Package Spicetify app
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare app ZIP
+        shell: bash
+        run: |
+          mkdir -p package/oyaa-viz
+
+          cp index.js package/oyaa-viz/
+          cp style.css package/oyaa-viz/
+          cp manifest.json package/oyaa-viz/
+          cp README.md package/oyaa-viz/
+          cp LICENSE package/oyaa-viz/
+          cp preview.png package/oyaa-viz/
+
+          cd package
+          zip -r "../oyaa-viz-${GITHUB_REF_NAME}.zip" oyaa-viz
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: oyaa-viz-${{ github.ref_name }}
+          path: oyaa-viz-*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: oyaa-viz ${{ github.ref_name }}
+          generate_release_notes: true
+          files: oyaa-viz-*.zip
