@@ -30,15 +30,10 @@
 .ln { margin: 19px 0; font-size: clamp(22px, 3.1vw, 42px); font-weight: 800; line-height: 1.3; color: rgba(255,255,255,.42); opacity: .48; filter: blur(1.2px); transform: scale(.97); cursor: pointer; transition: color .35s, opacity .45s, filter .45s, transform .45s; }
 .ln.past { color: rgba(255,255,255,.38); opacity: .34; }
 .ln.active { --e: 0; color: rgba(255,255,255,.76); opacity: 1; filter: none; transform: scale(1); }
-.w { --p: 0; display: inline-block; transition: color .15s, text-shadow .15s; }
+.w { --p: 0; --lift: 2px; --scale: .97; display: inline-block; transition: color .15s, text-shadow .15s, transform .08s linear; }
 /* sung syllables stay bright; the active syllable fills as playback moves through it */
 .ln.active .w.d { color: #fff; text-shadow: 0 0 calc(5px + var(--e) * 15px) rgba(var(--g), calc(.25 + var(--e) * .55)); }
-.ln.active .w.c { color: transparent; background: linear-gradient(to right, #fff calc(var(--p) * 1%), rgba(255,255,255,.58) calc(var(--p) * 1%)); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 calc(7px + var(--e) * 17px) rgba(var(--g), calc(.5 + var(--e) * .5))); transform-origin: center 85%; animation: karaoke-hit .42s cubic-bezier(.2,.8,.2,1); }
-@keyframes karaoke-hit {
-  0% { transform: translateY(4px) scale(.9); }
-  55% { transform: translateY(-3px) scale(1.1); }
-  100% { transform: translateY(0) scale(1); }
-}
+.ln.active .w.c { color: transparent; background: linear-gradient(to right, #fff calc(var(--p) * 1%), rgba(255,255,255,.58) calc(var(--p) * 1%)); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 calc(4px + var(--e) * 12px + var(--p) * .06px) rgba(var(--g), calc(.3 + var(--e) * .4 + var(--p) * .003))); transform: translateY(var(--lift)) scale(var(--scale)); transform-origin: center 85%; }
 
 .oyaa-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #666; font-size: 13px; letter-spacing: .08em; text-align: center; padding: 0 20px; }
 .oyaa-modal { position: absolute; inset: 0; z-index: 5; background: #000; display: flex; flex-direction: column; gap: 10px; padding: 20px; }
@@ -72,5 +67,5 @@
   .oyaa-scroll, .ln, .w { transition: none; }
   .ln { filter: none; transform: none; }
   .ln.active .w.d { text-shadow: none; }
-  .ln.active .w.c { filter: none; animation: none; }
+  .ln.active .w.c { filter: none; transform: none; }
 }

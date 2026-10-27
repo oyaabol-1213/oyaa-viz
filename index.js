@@ -138,8 +138,9 @@ function fromSyl(text, syl) {
     t = Math.max(t, prev); prev = t;
     if (skip) { while (p < all && n > 0) { const c = ch[p++]; s += c; if (!isSp(c)) n--; } }
     else { s = ch.slice(p, p + n).join(""); p += n; }
+    const end = +y.endTimeMs;
     if (syllabic) {
-      if (s) out.push({ t, s });
+      if (s) out.push({ t, e: isFinite(end) && end > t ? end : null, s });
     } else addChunk(out, st, t, s);
   }
   return out.length ? (syllabic ? out : splitTimedWords(out)) : null;
@@ -167,11 +168,12 @@ function estWords(text, t0, t1) {
     return { t: a, e: t0 + (sing * acc) / tot, s: w };
   });
 }
-function buildW(l) {
+function buildW(l, finalLine) {
   const b = l.tw;
   if (b && b.length)
     return b.map((x, i) => {
-      const e = b[i + 1] ? b[i + 1].t : Math.min(l.end, x.t + clamp(x.s.length * 120, 350, 1500));
+      const lastEnd = finalLine ? Math.min(l.end, x.t + 4000) : l.end;
+      const e = x.e || (b[i + 1] ? b[i + 1].t : lastEnd);
       return { t: x.t, e: Math.max(e, x.t + 1), s: x.s };
     });
   return estWords(l.words, l.t, l.end);
@@ -180,7 +182,7 @@ function finish(lines, dur) {
   lines.sort((a, b) => a.t - b.t);
   lines.forEach((l, i) => {
     l.end = i < lines.length - 1 ? lines[i + 1].t : Math.max(dur, l.t + 4000);
-    l.w = buildW(l);
+    l.w = buildW(l, i === lines.length - 1);
   });
   return lines;
 }
@@ -617,11 +619,20 @@ function App() {
         if (j >= 0 && j > s.widx) s.flash = 1; // a new word starts: flash
         s.widx = j; s.lastP = -1;
         for (let k = 0; k < sp.length; k++) sp[k].className = "w" + (k < j ? " d" : k === j ? " c" : "");
-        if (j >= 0 && sp[j]) sp[j].style.setProperty("--p", "0");
+        if (j >= 0 && sp[j]) {
+          sp[j].style.setProperty("--p", "0");
+          sp[j].style.setProperty("--lift", "2px");
+          sp[j].style.setProperty("--scale", "0.97");
+        }
       }
       if (j >= 0 && sp[j]) {
         const w = ws[j], p = clamp((pos - w.t) / Math.max(1, w.e - w.t), 0, 1) * 100;
-        if (Math.abs(p - s.lastP) > 0.8 || (p === 100 && s.lastP !== 100)) { s.lastP = p; sp[j].style.setProperty("--p", p.toFixed(1)); }
+        if (Math.abs(p - s.lastP) > 0.8 || (p === 100 && s.lastP !== 100)) {
+          s.lastP = p;
+          sp[j].style.setProperty("--p", p.toFixed(1));
+          sp[j].style.setProperty("--lift", (2 - p * 0.04).toFixed(2) + "px");
+          sp[j].style.setProperty("--scale", (0.97 + p * 0.0003).toFixed(3));
+        }
       }
       // glow strength follows the music (and flashes on each word); ~30 updates/s on one element only
       if (now - s.lastEt > 33) {
