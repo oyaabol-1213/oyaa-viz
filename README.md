@@ -48,6 +48,8 @@
 - Click any lyric line to jump to it
 - Pure black AMOLED background with lightweight canvas rendering
 
+The lyrics experience adapts selected Liquid Lyrics features for Oyaa Viz. Credit: Liquid Lyrics by [NMW](https://github.com/NMWplays), licensed under [AGPL-3.0](https://github.com/NMWplays/Liquid-Lyrics/blob/main/LICENSE). The supplied archive contains a bundled extension rather than importable components; its separate page, sidebar card, and player-bar button are not included here.
+
 ---
 
 ## Tutorial

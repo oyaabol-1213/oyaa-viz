@@ -8,10 +8,11 @@
 .oyaa.white { --c: #ffffff; --cd: #5c5c5c; --g: 255, 255, 255; }
 
 .oyaa { position: relative; isolation: isolate; display: flex; flex-direction: column; height: 100%; min-height: calc(100vh - 130px); background: #000; color: #fff; font-family: "Segoe UI", Inter, system-ui, sans-serif; overflow: hidden; }
-.oyaa-backdrop { position: absolute; z-index: 0; inset: -5%; background-position: center; background-size: cover; opacity: 0; filter: blur(var(--oyaa-bg-blur, 24px)) saturate(1.2); transform: scale(1.06); transition: opacity .7s ease; animation: oyaa-backdrop-drift 32s ease-in-out infinite alternate; pointer-events: none; will-change: transform; }
-.oyaa-backdrop::before { content: ""; position: absolute; inset: -10%; background: radial-gradient(ellipse at 20% 35%, rgba(var(--g),.30), transparent 42%), radial-gradient(ellipse at 78% 24%, rgba(80,90,255,.16), transparent 38%), radial-gradient(ellipse at 60% 82%, rgba(255,120,40,.14), transparent 44%); mix-blend-mode: screen; filter: blur(28px); animation: liquid-blob-drift 32s ease-in-out infinite alternate; will-change: transform; }
+.oyaa-backdrop { position: absolute; z-index: 0; inset: -5%; background-position: center; background-size: cover; opacity: 0; filter: blur(var(--oyaa-bg-blur, 24px)) saturate(1.2); transform: scale(1.06); transition: opacity .7s ease; pointer-events: none; }
+.oyaa-backdrop::before { content: ""; position: absolute; inset: -10%; background: radial-gradient(ellipse at 20% 35%, rgba(var(--g),.30), transparent 42%), radial-gradient(ellipse at 78% 24%, rgba(80,90,255,.16), transparent 38%), radial-gradient(ellipse at 60% 82%, rgba(255,120,40,.14), transparent 44%); mix-blend-mode: screen; filter: blur(28px); }
 .oyaa.has-background { background: #080707; }
-.oyaa.has-background .oyaa-backdrop { opacity: var(--oyaa-bg-opacity, .48); }
+.oyaa.has-background .oyaa-backdrop { opacity: var(--oyaa-bg-opacity, .48); animation: oyaa-backdrop-drift 32s ease-in-out infinite alternate; will-change: transform; }
+.oyaa.has-background .oyaa-backdrop::before { animation: liquid-blob-drift 32s ease-in-out infinite alternate; will-change: transform; }
 .oyaa.has-background::after { content: ""; position: absolute; z-index: 0; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.62), rgba(0,0,0,.78)); pointer-events: none; }
 .oyaa > :not(.oyaa-backdrop) { z-index: 1; }
 @keyframes oyaa-backdrop-drift { from { transform: scale(1.06) translate3d(-.5%, 0, 0); } to { transform: scale(1.12) translate3d(.5%, -1%, 0); } }
@@ -85,16 +86,6 @@
 .ll-preview-line { display: flex; gap: 14px; padding: 7px 0; color: #ddd; font-size: 14px; }
 .ll-preview-line time { flex: 0 0 66px; color: var(--c); font: 11px Consolas, monospace; }
 .ll-editor-preview-actions { display: flex; justify-content: flex-end; gap: 8px; }
-.oyaa:fullscreen { width: 100vw; height: 100vh; min-height: 100vh; background: #000; }
-.oyaa:fullscreen .oyaa-body { padding: 3vh 5vw 5vh; }
-.oyaa.cinema .oyaa-top { min-height: 48px; }
-.oyaa.cinema .oyaa-sync,
-.oyaa.cinema .oyaa-top > .oyaa-btn:not(.oyaa-cinema-toggle):not(.oyaa-fullscreen-toggle):not(.oyaa-settings-toggle) { display: none; }
-.oyaa.cinema .oyaa-top { justify-content: flex-end; }
-.oyaa.cinema .oyaa-title { margin-right: auto; }
-.oyaa.cinema .oyaa-body { gap: clamp(32px, 7vw, 100px); }
-.oyaa.cinema .ll-line { font-size: clamp(26px, 3.8vw, 52px); }
-
 /* Liquid Lyrics sync editor */
 .mk-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .mk-clock { font: 600 20px Consolas, monospace; color: var(--c); letter-spacing: .05em; min-width: 98px; }

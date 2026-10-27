@@ -6,6 +6,7 @@ const LS_L = "oyaa-viz:lyrics:", LS_C = "oyaa-viz:color", LS_O = "oyaa-viz:offse
   LS_LF = "oyaa-viz:liquid-lyrics-size", LS_CM = "oyaa-viz:cinema", N = 48, LAG = 150;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const isSp = (c) => /\s/.test(c);
+const tms = (m, s) => (+m * 60 + parseFloat(String(s).replace(":", "."))) * 1000;
 const store = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
 
 /* ---------- time + word timing ---------- */
@@ -131,42 +132,6 @@ function fromTags(s, t0) {
   addChunk(out, st, t0, parts[0]);
   for (let i = 1; i + 2 < parts.length; i += 3) addChunk(out, st, tms(parts[i], parts[i + 1]), parts[i + 2] || "");
   return out.length ? splitTimedWords(out) : null;
-}
-// no word timing available: spread the words over the part of the line that is really sung
-function estWords(text, t0, t1) {
-  if (text === "♪") return [{ t: t0, e: Math.max(t1, t0 + 1), s: text }];
-  const ws = splitWords(text);
-  if (!ws.length) return [];
-  const chars = ws.reduce((a, w) => a + w.length, 0), gap = Math.max(1, t1 - t0);
-  const sing = Math.min(gap, clamp(gap * 0.7, chars * 80, chars * 170)), tot = chars + ws.length;
-  let acc = 0;
-  return ws.map((w) => {
-    const a = t0 + (sing * acc) / tot;
-    acc += w.length + 1;
-    return { t: a, e: t0 + (sing * acc) / tot, s: w };
-  });
-}
-function buildW(l, finalLine) {
-  const b = l.tw;
-  if (b && b.length)
-    return b.map((x, i) => {
-      const lastEnd = finalLine ? Math.min(l.end, x.t + 4000) : l.end;
-      const e = x.e || (b[i + 1] ? b[i + 1].t : lastEnd);
-      return { t: x.t, e: Math.max(e, x.t + 1), s: x.s };
-    });
-  return estWords(l.words, l.t, l.end);
-}
-function finish(lines, dur) {
-  lines.sort((a, b) => a.t - b.t);
-  lines.forEach((l, i) => {
-    l.end = i < lines.length - 1 ? lines[i + 1].t : Math.max(dur, l.t + 4000);
-    l.w = buildW(l, i === lines.length - 1);
-  });
-  return lines;
-}
-function spread(arr, dur) {
-  const step = dur / Math.max(arr.length, 1);
-  return finish(arr.map((w, i) => ({ t: i * step, words: w })), dur);
 }
 function parseText(text, dur) {
   const re = /\[(\d+):(\d+(?:[.:]\d+)?)\]/g, raw = text.split(/\r?\n/), out = [];
