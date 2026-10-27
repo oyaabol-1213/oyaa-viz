@@ -1,6 +1,7 @@
 var __oyaaViz = (function () {
 // oyaa-viz — Spicetify custom app
-const LS_L = "oyaa-viz:lyrics:", LS_C = "oyaa-viz:color", LS_O = "oyaa-viz:offset:", LS_R = "oyaa-viz:roman", N = 48, LAG = 150;
+const LS_L = "oyaa-viz:lyrics:", LS_C = "oyaa-viz:color", LS_O = "oyaa-viz:offset:", LS_R = "oyaa-viz:roman",
+  LS_BG = "oyaa-viz:liquid-background", LS_BB = "oyaa-viz:liquid-blur", LS_CM = "oyaa-viz:cinema", N = 48, LAG = 150;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const tms = (m, s) => (+m * 60 + parseFloat(String(s).replace(":", "."))) * 1000;
 const isSp = (c) => /\s/.test(c);
@@ -259,7 +260,14 @@ function getTrack() {
   const it = Spicetify.Player.data && Spicetify.Player.data.item;
   if (!it) return null;
   const artist = (it.artists && it.artists.map((a) => a.name).join(", ")) || (it.metadata && it.metadata.artist_name) || "";
-  return { uri: it.uri, name: it.name, artist, dur: (it.duration && it.duration.milliseconds) || Spicetify.Player.getDuration() || 180000 };
+  const metadata = it.metadata || {};
+  const imageValue = (it.album && it.album.images && it.album.images[0] && it.album.images[0].url) ||
+    metadata.image_url || Object.keys(metadata).filter((key) => /^image_x?/.test(key)).map((key) => metadata[key]).find((value) => typeof value === "string") || "";
+  const image = typeof imageValue === "string" ? imageValue : "";
+  const artwork = image.startsWith("spotify:image:")
+    ? "https://i.scdn.co/image/" + image.slice("spotify:image:".length)
+    : image;
+  return { uri: it.uri, name: it.name, artist, artwork, dur: (it.duration && it.duration.milliseconds) || Spicetify.Player.getDuration() || 180000 };
 }
 
 /* ---------- LRC maker / editor ---------- */
@@ -392,6 +400,23 @@ function Editor(p) {
     foot);
 }
 
+function LiquidSettings(p) {
+  const R = Spicetify.React, h = R.createElement;
+  return h("div", { className: "oyaa-settings", role: "dialog", "aria-label": "Liquid lyrics settings" },
+    h("div", { className: "oyaa-settings-head" },
+      h("strong", null, "lyrics settings"),
+      h("button", { className: "oyaa-btn ghost", onClick: p.onClose, "aria-label": "Close settings" }, "×")),
+    h("label", { className: "oyaa-setting" },
+      h("span", null, "animated album background"),
+      h("input", { type: "checkbox", checked: p.background, onChange: (e) => p.onBackground(e.target.checked) })),
+    h("label", { className: "oyaa-setting oyaa-setting-range" },
+      h("span", null, "background blur"),
+      h("input", { type: "range", min: 0, max: 48, step: 2, value: p.blur, onChange: (e) => p.onBlur(+e.target.value) }),
+      h("output", null, p.blur + "px")),
+    h("div", { className: "oyaa-settings-note" },
+      "Create and edit synced lyrics in EDIT LYRICS → LRC MAKER. Background uses the current track artwork."));
+}
+
 /* ---------- app ---------- */
 
 function App() {
@@ -405,6 +430,13 @@ function App() {
   const [romanText, setRomanText] = R.useState(null);
   const [romanStatus, setRomanStatus] = R.useState("idle");
   const [romanError, setRomanError] = R.useState("");
+  const savedBackgroundBlur = Number(localStorage.getItem(LS_BB));
+  const [background, setBackground] = R.useState(localStorage.getItem(LS_BG) !== "0");
+  const [backgroundBlur, setBackgroundBlur] = R.useState(localStorage.getItem(LS_BB) === null || !Number.isFinite(savedBackgroundBlur) ? 24 : clamp(savedBackgroundBlur, 0, 48));
+  const [cinema, setCinema] = R.useState(localStorage.getItem(LS_CM) === "1");
+  const [fullscreen, setFullscreen] = R.useState(!!document.fullscreenElement);
+  const [settings, setSettings] = R.useState(false);
+  const [viewError, setViewError] = R.useState("");
   const [edit, setEdit] = R.useState(null);
   const [track, setTrack] = R.useState(getTrack());
   const [rev, setRev] = R.useState(0);
@@ -421,6 +453,12 @@ function App() {
     const f = () => setTrack(getTrack());
     Spicetify.Player.addEventListener("songchange", f);
     return () => Spicetify.Player.removeEventListener("songchange", f);
+  }, []);
+
+  R.useEffect(() => {
+    const update = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", update);
+    return () => document.removeEventListener("fullscreenchange", update);
   }, []);
 
   // audio analysis (cached) — drives the spectrum + glow
@@ -660,6 +698,23 @@ function App() {
 
   const setColor = (m) => { setMode(m); store(LS_C, m); };
   const setRoman = (enabled) => { setRomanize(enabled); store(LS_R, enabled ? "1" : "0"); };
+  const setBackgroundEnabled = (enabled) => { setBackground(enabled); store(LS_BG, enabled ? "1" : "0"); };
+  const setBlur = (value) => { setBackgroundBlur(value); store(LS_BB, String(value)); };
+  const toggleCinema = () => {
+    const next = !cinema;
+    setCinema(next);
+    store(LS_CM, next ? "1" : "0");
+  };
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+      setViewError("");
+    } catch (e) {
+      console.error("oyaa-viz fullscreen error", e);
+      setViewError("Fullscreen is unavailable in this Spotify view.");
+    }
+  };
   const bump = (d) => {
     const v = d === 0 ? 0 : clamp(Math.round((off + d) / 10) * 10, -10000, 10000);
     setOff(v); if (uri) store(LS_O + uri, v ? String(v) : null);
@@ -678,10 +733,19 @@ function App() {
   const title = [
     src !== "none" ? "lyrics · " + src : "no lyrics",
     ana === "ok" ? "spectrum · analysis" : ana === "none" ? "spectrum · generic" : "",
-    romanStatus === "loading" ? "romanizing lyrics…" : romanStatus === "error" ? "romanization failed" : ""
+    romanStatus === "loading" ? "romanizing lyrics…" : romanStatus === "error" ? "romanization failed" : "",
+    viewError
   ].filter(Boolean).join("  |  ");
 
-  return h("div", { className: "oyaa " + mode },
+  return h("div", {
+    className: "oyaa " + mode + (background && track && track.artwork ? " has-background" : "") + (cinema ? " cinema" : ""),
+    style: { "--oyaa-bg-blur": backgroundBlur + "px" }
+  },
+    h("div", {
+      className: "oyaa-backdrop",
+      "aria-hidden": true,
+      style: { backgroundImage: background && track && track.artwork ? "url(" + JSON.stringify(track.artwork) + ")" : "none" }
+    }),
     h("div", { className: "oyaa-top" },
       h("div", {
         className: "oyaa-title",
@@ -701,7 +765,24 @@ function App() {
         "aria-pressed": romanize,
         onClick: () => setRoman(!romanize)
       }, "roman"),
-      h("button", { className: "oyaa-btn", onClick: openEdit }, "edit lyrics")),
+      h("button", { className: "oyaa-btn", onClick: openEdit }, "edit lyrics"),
+      h("button", {
+        className: "oyaa-btn oyaa-cinema-toggle" + (cinema ? " on" : ""),
+        onClick: toggleCinema,
+        "aria-pressed": cinema,
+        title: cinema ? "Exit cinema mode" : "Cinema mode"
+      }, cinema ? "exit cinema" : "cinema"),
+      h("button", {
+        className: "oyaa-btn oyaa-fullscreen-toggle",
+        onClick: toggleFullscreen,
+        title: fullscreen ? "Exit fullscreen" : "Fullscreen"
+      }, fullscreen ? "window" : "fullscreen"),
+      h("button", {
+        className: "oyaa-btn oyaa-settings-toggle" + (settings ? " on" : ""),
+        onClick: () => setSettings(!settings),
+        "aria-expanded": settings,
+        title: "Lyrics settings"
+      }, "settings")),
     h("div", { className: "oyaa-body" },
       h("div", { className: "oyaa-left" },
         h("div", { className: "oyaa-viz", "aria-label": "Audio visualizer" }, h("canvas", { ref: cv })),
@@ -716,6 +797,13 @@ function App() {
                   l.w.flatMap((w, j) => (j && sep ? [sep, h("span", { key: j, className: "w" }, w.s)] : [h("span", { key: j, className: "w" }, w.s)])));
               }))
           : h("div", { className: "oyaa-empty" }, track ? "No lyrics found. Press EDIT LYRICS to add your own." : "Play a song to start."))),
+    settings && h(LiquidSettings, {
+      background,
+      blur: backgroundBlur,
+      onBackground: setBackgroundEnabled,
+      onBlur: setBlur,
+      onClose: () => setSettings(false)
+    }),
     edit !== null && h(Editor, { key: uri, initial: edit, onSave: save, onReset: reset, onCancel: () => setEdit(null) }));
 }
 

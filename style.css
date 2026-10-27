@@ -7,7 +7,13 @@
 .oyaa { --c: #ff2a3d; --cd: #6b0d18; --g: 255, 30, 60; --dim: rgba(255,255,255,.28); }
 .oyaa.white { --c: #ffffff; --cd: #5c5c5c; --g: 255, 255, 255; }
 
-.oyaa { position: relative; display: flex; flex-direction: column; height: 100%; min-height: calc(100vh - 130px); background: #000; color: #fff; font-family: "Segoe UI", Inter, system-ui, sans-serif; overflow: hidden; }
+.oyaa { position: relative; isolation: isolate; display: flex; flex-direction: column; height: 100%; min-height: calc(100vh - 130px); background: #000; color: #fff; font-family: "Segoe UI", Inter, system-ui, sans-serif; overflow: hidden; }
+.oyaa-backdrop { position: absolute; z-index: 0; inset: -5%; background-position: center; background-size: cover; opacity: 0; filter: blur(var(--oyaa-bg-blur, 24px)) saturate(1.35); transform: scale(1.06); transition: opacity .7s ease; animation: oyaa-backdrop-drift 32s ease-in-out infinite alternate; pointer-events: none; }
+.oyaa.has-background { background: #080707; }
+.oyaa.has-background .oyaa-backdrop { opacity: .48; }
+.oyaa.has-background::after { content: ""; position: absolute; z-index: 0; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.62), rgba(0,0,0,.78)); pointer-events: none; }
+.oyaa > :not(.oyaa-backdrop) { z-index: 1; }
+@keyframes oyaa-backdrop-drift { from { transform: scale(1.06) translate3d(-.5%, 0, 0); } to { transform: scale(1.12) translate3d(.5%, -1%, 0); } }
 .oyaa-top { display: flex; align-items: center; gap: 8px; padding: 14px 20px 6px; }
 .oyaa-title { flex: 1; min-width: 0; font-size: 12px; letter-spacing: .15em; text-transform: uppercase; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .oyaa-btn { background: transparent; color: #aaa; border: 1px solid #2a2a2a; border-radius: 4px; padding: 5px 10px; font-size: 11px; letter-spacing: .1em; cursor: pointer; text-transform: uppercase; }
@@ -41,6 +47,21 @@
 .oyaa-modal textarea:focus { border-color: var(--c); }
 .oyaa-hint { font-size: 11px; color: #777; line-height: 1.5; }
 .oyaa-row { display: flex; gap: 8px; justify-content: flex-end; }
+.oyaa-settings { position: absolute; z-index: 5; top: 54px; right: 20px; width: min(340px, calc(100% - 32px)); padding: 16px; border: 1px solid #292929; border-radius: 8px; background: rgba(8,8,8,.94); box-shadow: 0 16px 48px rgba(0,0,0,.5); backdrop-filter: blur(18px); }
+.oyaa-settings-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; color: #eee; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+.oyaa-setting { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 0; color: #ccc; font-size: 12px; }
+.oyaa-setting input[type="checkbox"] { accent-color: var(--c); }
+.oyaa-setting-range { flex-wrap: wrap; }
+.oyaa-setting-range input { flex: 1; min-width: 100px; accent-color: var(--c); }
+.oyaa-setting-range output { min-width: 34px; color: #888; text-align: right; }
+.oyaa-settings-note { margin-top: 8px; color: #777; font-size: 11px; line-height: 1.5; }
+.oyaa.cinema .oyaa-top { min-height: 48px; }
+.oyaa.cinema .oyaa-sync,
+.oyaa.cinema .oyaa-top > .oyaa-btn:not(.oyaa-cinema-toggle):not(.oyaa-fullscreen-toggle):not(.oyaa-settings-toggle) { display: none; }
+.oyaa.cinema .oyaa-top { justify-content: flex-end; }
+.oyaa.cinema .oyaa-title { margin-right: auto; }
+.oyaa.cinema .oyaa-body { gap: clamp(32px, 7vw, 100px); }
+.oyaa.cinema .ln { font-size: clamp(26px, 3.8vw, 52px); }
 
 /* LRC maker */
 .mk-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -64,7 +85,7 @@
 .mk-n:hover { color: #fff; border-color: #666; }
 
 @media (prefers-reduced-motion: reduce) {
-  .oyaa-scroll, .ln, .w { transition: none; }
+  .oyaa-scroll, .ln, .w, .oyaa-backdrop { transition: none; animation: none; }
   .ln { filter: none; transform: none; }
   .ln.active .w.d { text-shadow: none; }
   .ln.active .w.c { filter: none; transform: none; }
@@ -75,4 +96,7 @@
   .oyaa-left { flex: 0 0 auto; width: min(100%, 42vh); }
   .oyaa-viz { width: 100%; min-width: 0; }
   .oyaa-lyrics { flex: 1 0 42vh; width: 100%; min-height: 42vh; }
+  .oyaa-top { gap: 5px; padding: 10px 12px 6px; flex-wrap: wrap; }
+  .oyaa-title { flex-basis: 100%; }
+  .oyaa-settings { top: 74px; right: 12px; }
 }

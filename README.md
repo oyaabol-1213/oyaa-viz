@@ -42,6 +42,8 @@
 - Romanization is fetched from Google Translate only when enabled; the lyric text is sent to Google, not Spotify credentials, account details, or track IDs
 - The glow pulses with the music, and flashes on every new word  
 - **RED** / **WHITE** recolor the visualizer *and* the lyrics  
+- Animated album-art background with adjustable blur in **SETTINGS**
+- **CINEMA** mode and **FULLSCREEN** viewing for an immersive lyrics layout
 - Built-in **LRC maker**: stamp your own lyrics while the song plays  
 - Per-song **sync offset** (− / + in the top bar) if the lyrics run early or late  
 - Song has no lyrics? Add your own with **EDIT LYRICS**  
