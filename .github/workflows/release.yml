@@ -26,7 +26,7 @@ jobs:
         run: |
           mkdir -p package/oyaa-viz
 
-          cp index.js package/oyaa-viz/
+          cp oyaa-viz.js package/oyaa-viz/
           cp style.css package/oyaa-viz/
           cp manifest.json package/oyaa-viz/
           cp README.md package/oyaa-viz/
