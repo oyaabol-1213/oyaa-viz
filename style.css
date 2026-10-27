@@ -30,11 +30,16 @@
 .ln { margin: 14px 0; font-size: clamp(20px, 2.8vw, 38px); font-weight: 800; line-height: 1.25; color: rgba(255,255,255,.2); cursor: pointer; transition: color .3s; }
 .ln.past { color: var(--cd); }
 .ln.active { --e: 0; color: var(--dim); }
-.w { --p: 0; }
+.w { --p: 0; display: inline-block; }
 /* already sung: solid color with a soft glow that follows the music */
 .ln.active .w.d { color: var(--c); text-shadow: 0 0 calc(4px + var(--e) * 14px) rgba(var(--g), calc(.3 + var(--e) * .5)); }
 /* being sung right now: fills left to right, brightest glow */
-.ln.active .w.c { color: transparent; background: linear-gradient(to right, var(--c) calc(var(--p) * 1%), var(--dim) calc(var(--p) * 1%)); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 calc(6px + var(--e) * 16px) rgba(var(--g), calc(.55 + var(--e) * .45))); }
+.ln.active .w.c { color: transparent; background: linear-gradient(to right, var(--c) calc(var(--p) * 1%), var(--dim) calc(var(--p) * 1%)); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 calc(6px + var(--e) * 16px) rgba(var(--g), calc(.55 + var(--e) * .45))); transform-origin: center 85%; animation: karaoke-hit .32s cubic-bezier(.2,.8,.2,1); }
+@keyframes karaoke-hit {
+  0% { transform: translateY(3px) scale(.96); }
+  55% { transform: translateY(-2px) scale(1.045); }
+  100% { transform: translateY(0) scale(1); }
+}
 
 .oyaa-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #666; font-size: 13px; letter-spacing: .08em; text-align: center; padding: 0 20px; }
 .oyaa-modal { position: absolute; inset: 0; z-index: 5; background: #000; display: flex; flex-direction: column; gap: 10px; padding: 20px; }
@@ -67,5 +72,5 @@
 @media (prefers-reduced-motion: reduce) {
   .oyaa-scroll, .ln { transition: none; }
   .ln.active .w.d { text-shadow: none; }
-  .ln.active .w.c { filter: none; }
+  .ln.active .w.c { filter: none; animation: none; }
 }

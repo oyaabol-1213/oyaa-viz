@@ -28,19 +28,15 @@ function splitWords(text, lang) {
   if (/\s/.test(text) || !lyricLanguage(text)) return text.split(/\s+/).filter(Boolean);
   const locale = lang || lyricLanguage(text);
   if (typeof Intl !== "undefined" && typeof Intl.Segmenter === "function") {
-    const segments = new Intl.Segmenter(locale, { granularity: "word" }).segment(text);
-    const words = [];
-    for (const part of segments) {
-      if (/^\s+$/.test(part.segment)) continue;
-      if (part.isWordLike) words.push(part.segment);
-      else if (words.length) words[words.length - 1] += part.segment;
-      else words.push(part.segment);
-    }
-    if (words.length > 1) return words;
-    if (locale === "ko" && Array.from(text).length > 1) return Array.from(text);
-    if (words.length) return words;
+    return Array.from(new Intl.Segmenter(locale, { granularity: "grapheme" }).segment(text), (part) => part.segment);
   }
-  return Array.from(text).filter((part) => !/\s/.test(part));
+  const parts = [];
+  for (const part of Array.from(text)) {
+    if (/\s/.test(part)) continue;
+    if (parts.length && (/\p{Mark}|\uFE00-\uFE0F/u.test(part) || parts[parts.length - 1] === "\u200d")) parts[parts.length - 1] += part;
+    else parts.push(part);
+  }
+  return parts;
 }
 function splitTimedWords(words) {
   return words.flatMap((word, i) => {
@@ -129,6 +125,7 @@ function addChunk(out, st, t, s) {
 function fromSyl(text, syl) {
   if (!Array.isArray(syl) || !syl.length) return null;
   const ch = Array.from(text), all = ch.length, bare = ch.filter((c) => !isSp(c)).length;
+  const syllabic = !!lyricLanguage(text) && !/\s/.test(text);
   let tot = 0;
   for (const y of syl) tot += +y.numChars || 0;
   const skip = tot !== all;
@@ -141,9 +138,11 @@ function fromSyl(text, syl) {
     t = Math.max(t, prev); prev = t;
     if (skip) { while (p < all && n > 0) { const c = ch[p++]; s += c; if (!isSp(c)) n--; } }
     else { s = ch.slice(p, p + n).join(""); p += n; }
-    addChunk(out, st, t, s);
+    if (syllabic) {
+      if (s) out.push({ t, s });
+    } else addChunk(out, st, t, s);
   }
-  return out.length ? splitTimedWords(out) : null;
+  return out.length ? (syllabic ? out : splitTimedWords(out)) : null;
 }
 // enhanced LRC: [00:12.00] <00:12.00>First <00:12.40>word
 function fromTags(s, t0) {
