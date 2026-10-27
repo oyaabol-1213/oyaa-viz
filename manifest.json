@@ -1,25 +1,11 @@
-{
-  "name": "oyaa-viz",
-  "description": "Oyaa Viz spectrum visualizer with Liquid Lyrics-style synced lyrics, animated artwork background, cinema and fullscreen modes, and red or white lyrics.",
-  "repository": "https://github.com/oyaabol-1213/oyaa-viz",
-  "preview": "preview.png",
-  "readme": "README.md",
-  "authors": [
-    {
-      "name": "oyaa",
-      "url": "https://github.com/oyaabol-1213"
-    }
-  ],
-  "tags": [
-    "visualizer",
-    "lyrics",
-    "amoled",
-    "minimal"
-  ],
-  "icon": "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M2 10h2v4H2zm3-4h2v12H5zm3-3h2v18H8zm3-2h2v22h-2zm3 2h2v18h-2zm3 3h2v12h-2zm3 4h2v4h-2z\"/></svg>",
-  "active-icon": "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M2 10h2v4H2zm3-4h2v12H5zm3-3h2v18H8zm3-2h2v22h-2zm3 2h2v18h-2zm3 3h2v12h-2zm3 4h2v4h-2z\"/></svg>",
-  "subfiles": [],
-  "subfiles_extension": [
-    "oyaa-viz-button.js"
-  ]
-}
+[
+  {
+    "name": "oyaa-viz",
+    "description": "Glitch audio-spectrum visualizer with Liquid Lyrics word-by-word synced lyrics, animated background, cinema/fullscreen and a sync editor. AMOLED black, red or white.",
+    "preview": "preview.png",
+    "main": "https://raw.githubusercontent.com/oyaabol-1213/oyaa-viz/main/oyaa-viz.js",
+    "readme": "README.md",
+    "authors": [{ "name": "oyaa", "url": "https://github.com/oyaabol-1213" }],
+    "tags": ["lyrics", "visualizer", "amoled", "fullscreen", "karaoke"]
+  }
+]
