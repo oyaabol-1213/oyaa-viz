@@ -37,16 +37,17 @@
 ## Features
 
 - Glitch spectrum visualizer with "oyaa-viz" inside, switch between **red** and **white**  
-- Synced lyrics from Spotify with **word-by-word karaoke**: the word being sung fills left to right and glows  
+- Liquid Lyrics-style synced lyrics beside the oyaa visualizer, with a choice of **Karaoke** word timing or calmer **Block** display
 - Optional persistent **ROMAN** toggle for Japanese, Korean, and Chinese lyrics, with karaoke timing retained
 - Romanization is fetched from Google Translate only when enabled; the lyric text is sent to Google, not Spotify credentials, account details, or track IDs
 - The glow pulses with the music, and flashes on every new word  
 - **RED** / **WHITE** recolor the visualizer *and* the lyrics  
-- Animated album-art background with adjustable blur in **SETTINGS**
-- **CINEMA** mode and **FULLSCREEN** viewing for an immersive lyrics layout
-- Built-in **LRC maker**: stamp your own lyrics while the song plays  
+- Animated cover-art background with adjustable blur and opacity in **LIQUID LYRICS SETTINGS**
+- **CINEMA** mode and dedicated **FULLSCREEN** viewing
+- Liquid Lyrics **SYNC EDITOR** with text, block-sync, word-by-word karaoke sync, preview, undo, seeking, and timestamp nudging
+- Persistent settings for lyric display, size, smooth scrolling, background, and per-track sync offset
 - Per-song **sync offset** (− / + in the top bar) if the lyrics run early or late  
-- Song has no lyrics? Add your own with **EDIT LYRICS**  
+- Song has no lyrics? Create synced lyrics for it in the **SYNC EDITOR**
 - Click any lyric line to jump to it  
 - Pure black AMOLED background, light on resources
 
@@ -104,15 +105,16 @@ Spotify restarts, and you'll see the **oyaa-viz** icon in the left sidebar.
 4. Click a lyric line to seek to that part of the song.  
 5. Lyrics too early or too late? Use **−** / **+** in the top bar (0.1s per click). The number resets it. It is saved per song.
 6. For Japanese, Korean, or Chinese lyrics, turn on **ROMAN** to show romanized text. The preference is saved. Romanization sends lyric text only to Google Translate; it does not send Spotify credentials, account details, or track IDs. Turning ROMAN off keeps the original script visible.
+7. Open **SETTINGS** to adjust the animated artwork background, blur, opacity, lyric display style and size, scrolling, and per-track offset. **CINEMA** and **FULLSCREEN** provide the immersive views.
 
 Romanization requests are opt-in and use Google Translate's public endpoint. Google receives the selected lyric text and detected source language to produce romanization. If the request fails, the original lyrics remain available.
 
-### Adding your own lyrics
+### Create or edit synced lyrics
 
 If a song has no lyrics, or you want to use your own:
 
-1. Press **EDIT LYRICS** at the top right.  
-2. Paste your lyrics. There are two ways to write them.
+1. Press **SYNC EDITOR** at the top right.
+2. Paste your lyrics in **TEXT**, or edit the current track's lyrics.
 
 **With timestamps (exact sync):**
 
@@ -130,22 +132,11 @@ Second line
 Third line
 ```
 
-3. Press **SAVE**. Your lyrics are saved for that song only.  
-4. To go back to Spotify's lyrics, open **EDIT LYRICS** and press **USE SPOTIFY LYRICS**.
+3. Choose **Block Sync** to timestamp each line or **Karaoke Sync** to timestamp each word while the song plays. Press **ENTER** or **TAP** on each beat; click a timestamp to seek, and use **UNDO** or the nudge buttons to correct timing.
+4. Review the result in **Preview**, then press **SAVE**. Your lyrics are saved locally for that song only.
+5. To return to the live lyrics, open **SYNC EDITOR** and press **USE LIVE LYRICS**.
 
-### LRC maker (stamp lyrics while the song plays)
-
-1. Press **EDIT LYRICS**, paste plain lyrics (one line per row), then press **LRC MAKER**.  
-2. Play the song. Press **ENTER** (or **TAP**) the moment each line starts. The next line is selected automatically.  
-3. Made a mistake? **Backspace** (or **UNDO**) removes the last stamp and rewinds 2.5 seconds so you can redo it. Click any line to re-stamp it. **−** / **+** on a line nudges it by 0.1s.  
-4. **←** / **→** jump 5 seconds. Taps are placed 0.15s early to cover your reaction time.  
-5. Press **SAVE**. Lines without a stamp are left out.
-
-Word timing is estimated from the line timing. If you want exact words, write them by hand in the TEXT tab:
-
-```
-[00:12.00] <00:12.00>First <00:12.50>line <00:13.10>here
-```
+Word-level timing is saved in enhanced LRC format. If the Google romanization request fails, the original lyric text remains visible.
 
 ### Updating
 
@@ -182,7 +173,7 @@ The app shows its own error text in red when something breaks. Please include th
 spicetify backup apply
 ```
 
-**No lyrics show for a song** Not every song has lyrics on Spotify. Use **EDIT LYRICS** to add your own.
+**No lyrics show for a song** Not every song has live lyrics. Use **SYNC EDITOR** to create and time your own.
 
 **Visualizer doesn't react to the music** The spectrum uses Spotify's audio analysis data. The top bar says `spectrum · analysis` when it is in use and `spectrum · generic` when it isn't. In generic mode it shows a steady pulse that also bumps on every sung word, so the lyrics still drive it.
 

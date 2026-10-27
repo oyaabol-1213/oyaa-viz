@@ -1,6 +1,6 @@
 {
   "name": "oyaa-viz",
-  "description": "Glitch spectrum visualizer with synced karaoke lyrics and an optional ROMAN toggle for Japanese, Korean, and Chinese lyrics. Enabling ROMAN sends lyric text to Google Translate for romanization.",
+  "description": "Oyaa-viz spectrum visualizer with Liquid Lyrics-style synced lyrics, word-level sync editor, animated artwork background, cinema/fullscreen modes, and persistent lyrics settings. Optional ROMAN sends lyric text only to Google Translate.",
   "repository": "https://github.com/oyaabol-1213/oyaa-viz",
   "preview": "preview.png",
   "readme": "README.md",

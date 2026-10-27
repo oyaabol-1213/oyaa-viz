@@ -1,7 +1,9 @@
 var __oyaaViz = (function () {
 // oyaa-viz — Spicetify custom app
 const LS_L = "oyaa-viz:lyrics:", LS_C = "oyaa-viz:color", LS_O = "oyaa-viz:offset:", LS_R = "oyaa-viz:roman",
-  LS_BG = "oyaa-viz:liquid-background", LS_BB = "oyaa-viz:liquid-blur", LS_CM = "oyaa-viz:cinema", N = 48, LAG = 150;
+  LS_BG = "oyaa-viz:liquid-background", LS_BB = "oyaa-viz:liquid-blur", LS_BO = "oyaa-viz:liquid-opacity",
+  LS_LS = "oyaa-viz:liquid-lyrics-style", LS_SCR = "oyaa-viz:liquid-smooth-scroll",
+  LS_LF = "oyaa-viz:liquid-lyrics-size", LS_CM = "oyaa-viz:cinema", N = 48, LAG = 150;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const tms = (m, s) => (+m * 60 + parseFloat(String(s).replace(":", "."))) * 1000;
 const isSp = (c) => /\s/.test(c);
@@ -208,25 +210,9 @@ function parseText(text, dur) {
   const arr = raw.map((s) => s.trim()).filter(Boolean);
   return arr.length ? spread(arr, dur) : [];
 }
-// LRC maker rows: [{text, t|null}]
-function toRows(text) {
-  const re = /\[(\d+):(\d+(?:[.:]\d+)?)\]/g, rows = [];
-  for (const raw of text.split(/\r?\n/)) {
-    const tags = [...raw.matchAll(re)], txt = raw.replace(re, "").replace(/<[^>]*>/g, "").trim();
-    if (!tags.length) { if (txt) rows.push({ text: txt, t: null }); continue; }
-    for (const t of tags) rows.push({ text: txt || "♪", t: tms(t[1], t[2]) });
-  }
-  return rows;
-}
-function rowsText(rows, only) {
-  if (only && rows.some((r) => r.t != null))
-    return rows.filter((r) => r.t != null).sort((a, b) => a.t - b.t).map((r) => fmt(r.t) + " " + r.text).join("\n");
-  return rows.map((r) => (r.t != null ? fmt(r.t) + " " : "") + r.text).join("\n");
-}
-
 /* ---------- data ---------- */
 
-async function fetchSpotify(id, dur) {
+async function fetchLiquidLyrics(id, dur) {
   try {
     const r = await Spicetify.CosmosAsync.get(
       `https://spclient.wg.spotify.com/color-lyrics/v2/track/${id}?format=json&vocalRemoval=false&market=from_token`,
@@ -270,7 +256,7 @@ function getTrack() {
   return { uri: it.uri, name: it.name, artist, artwork, dur: (it.duration && it.duration.milliseconds) || Spicetify.Player.getDuration() || 180000 };
 }
 
-/* ---------- LRC maker / editor ---------- */
+/* ---------- Liquid Lyrics sync editor ---------- */
 
 function Clock() {
   const R = Spicetify.React, h = R.createElement;
@@ -282,61 +268,169 @@ function Clock() {
   return h("span", { className: "mk-clock" }, fmt(v).slice(1, -1));
 }
 
-function Editor(p) {
+function editorTokens(text) {
+  const tokens = [];
+  let separator = "";
+  for (const part of String(text || "").match(/\s+|[^\s]+/g) || []) {
+    if (/^\s+$/.test(part)) {
+      separator = tokens.length ? " " : "";
+      continue;
+    }
+    const pieces = lyricLanguage(part) ? splitWords(part) : [part];
+    pieces.forEach((value, i) => {
+      tokens.push({ text: value, t: null, sep: i === 0 ? separator : "" });
+      separator = "";
+    });
+  }
+  return tokens;
+}
+
+function parseEditorRows(text) {
+  const lineTime = /\[(\d+):(\d+(?:[.:]\d+)?)\]/g;
+  return String(text || "").split(/\r?\n/).flatMap((raw) => {
+    const times = [...raw.matchAll(lineTime)];
+    let content = raw.replace(lineTime, "").trim();
+    if (!content) return [];
+    const timedSegments = content.split(/<(\d+):(\d+(?:[.:]\d+)?)>/);
+    const tokens = [];
+    let trailingSpace = false;
+    const append = (segmentText, time) => {
+      const segment = editorTokens(segmentText);
+      if (tokens.length && segment.length && (trailingSpace || /^\s/.test(segmentText))) segment[0].sep = " ";
+      if (time != null && segment.length) segment[0].t = time;
+      tokens.push(...segment);
+      trailingSpace = /\s$/.test(segmentText);
+    };
+    if (timedSegments.length > 1) {
+      append(timedSegments[0]);
+      for (let i = 1; i + 2 < timedSegments.length; i += 3) {
+        append(timedSegments[i + 2], tms(timedSegments[i], timedSegments[i + 1]));
+      }
+    } else append(content);
+    if (!tokens.length) return [];
+    const time = times.length ? tms(times[0][1], times[0][2]) : null;
+    return [{ text: content.replace(/<[^>]*>/g, "").trim(), t: time, tokens }];
+  });
+}
+
+function editorRowsText(rows) {
+  return rows.filter((row) => row.text.trim()).map((row) => {
+    const firstWordTime = row.tokens.find((word) => word.t != null);
+    const lineTime = row.t != null ? row.t : firstWordTime && firstWordTime.t;
+    const hasWordTiming = row.tokens.some((word) => word.t != null);
+    const text = hasWordTiming ? row.tokens.map((word) =>
+      word.sep + (word.t == null ? "" : "<" + fmt(word.t).slice(1, -1) + ">") + word.text
+    ).join("") : row.text;
+    return (lineTime == null ? "" : fmt(lineTime) + " ") + text;
+  }).join("\n");
+}
+
+function lyricTextForEditor(lines) {
+  return lines.map((line) => {
+    const separator = /\s/.test(line.words) ? " " : "";
+    const words = line.w.map((word) => "<" + fmt(word.t).slice(1, -1) + ">" + word.s);
+    return fmt(line.t) + " " + words.join(separator);
+  }).join("\n");
+}
+
+function LiquidSyncEditor(p) {
   const R = Spicetify.React, h = R.createElement;
-  const [tab, setTab] = R.useState("text");
+  const [stage, setStage] = R.useState("text");
+  const [mode, setMode] = R.useState("line");
   const [draft, setDraft] = R.useState(p.initial);
   const [rows, setRows] = R.useState([]);
-  const [cur, setCur] = R.useState(0);
+  const [cursor, setCursor] = R.useState(0);
   const [pos, setPos] = R.useState(0);
-  const ref = R.useRef({ rows: [], cur: 0 }), list = R.useRef(null), act = R.useRef({});
-  ref.current.rows = rows; ref.current.cur = cur;
+  const list = R.useRef(null), act = R.useRef({});
+  const targets = rows.flatMap((row, rowIndex) => mode === "line"
+    ? [{ rowIndex, wordIndex: -1, text: row.text, t: row.t }]
+    : row.tokens.map((word, wordIndex) => ({ rowIndex, wordIndex, text: word.text, t: word.t })));
+  const targetRef = R.useRef([]);
+  targetRef.current = targets;
+  const currentRef = R.useRef({ rows, cursor });
+  currentRef.current = { rows, cursor };
 
-  const commit = (r, c) => { ref.current = { rows: r, cur: c }; setRows(r); setCur(c); };
+  const commit = (nextRows, nextCursor) => {
+    currentRef.current = { rows: nextRows, cursor: nextCursor };
+    setRows(nextRows);
+    setCursor(nextCursor);
+  };
   const tap = () => {
-    const { rows: r, cur: c } = ref.current;
-    if (c >= r.length) return;
-    const n = r.slice();
-    n[c] = { text: n[c].text, t: Math.max(0, Spicetify.Player.getProgress() - LAG) };
-    commit(n, c + 1);
+    const { rows: currentRows, cursor: currentCursor } = currentRef.current;
+    const target = targetRef.current[currentCursor];
+    if (!target) return;
+    const nextRows = currentRows.map((row, i) => {
+      if (i !== target.rowIndex) return row;
+      if (target.wordIndex < 0) return { ...row, t: Math.max(0, Spicetify.Player.getProgress() - LAG) };
+      return {
+        ...row,
+        tokens: row.tokens.map((word, j) => j === target.wordIndex
+          ? { ...word, t: Math.max(0, Spicetify.Player.getProgress() - LAG) }
+          : word)
+      };
+    });
+    commit(nextRows, currentCursor + 1);
   };
   const undo = () => {
-    const { rows: r, cur: c } = ref.current, k = Math.min(c, r.length) - 1;
-    if (k < 0) return;
-    const old = r[k].t, n = r.slice();
-    n[k] = { text: n[k].text, t: null };
-    commit(n, k);
-    if (old != null) Spicetify.Player.seek(Math.max(0, old - 2500));
+    const { rows: currentRows, cursor: currentCursor } = currentRef.current;
+    const index = Math.min(currentCursor, targetRef.current.length) - 1;
+    const target = targetRef.current[index];
+    if (!target) return;
+    const nextRows = currentRows.map((row, i) => {
+      if (i !== target.rowIndex) return row;
+      if (target.wordIndex < 0) return { ...row, t: null };
+      return {
+        ...row,
+        tokens: row.tokens.map((word, j) => j === target.wordIndex ? { ...word, t: null } : word)
+      };
+    });
+    if (target.t != null) Spicetify.Player.seek(Math.max(0, target.t - 2500));
+    commit(nextRows, index);
   };
   const jump = (d) => Spicetify.Player.seek(Math.max(0, Spicetify.Player.getProgress() + d));
-  const pick = (k) => {
-    const r = ref.current.rows[k];
-    commit(ref.current.rows, k);
-    if (r && r.t != null) Spicetify.Player.seek(Math.max(0, r.t - 2500));
+  const pick = (index) => {
+    const target = targetRef.current[index];
+    if (!target) return;
+    setCursor(index);
+    if (target.t != null) Spicetify.Player.seek(Math.max(0, target.t - 2500));
   };
-  const nudge = (k, d) => {
-    const n = ref.current.rows.slice();
-    n[k] = { text: n[k].text, t: Math.max(0, n[k].t + d) };
-    commit(n, ref.current.cur);
+  const nudge = (index, d) => {
+    const target = targetRef.current[index];
+    if (!target || target.t == null) return;
+    const { rows: currentRows, cursor: currentCursor } = currentRef.current;
+    const nextRows = currentRows.map((row, i) => {
+      if (i !== target.rowIndex) return row;
+      if (target.wordIndex < 0) return { ...row, t: Math.max(0, row.t + d) };
+      return {
+        ...row,
+        tokens: row.tokens.map((word, j) => j === target.wordIndex
+          ? { ...word, t: Math.max(0, word.t + d) }
+          : word)
+      };
+    });
+    commit(nextRows, currentCursor);
   };
   act.current = { tap, undo, jump };
 
-  const toMaker = () => {
-    const r = toRows(draft);
-    let c = r.findIndex((x) => x.t == null);
-    if (c < 0) c = r.length;
-    commit(r, c); setTab("maker");
+  const beginSync = () => {
+    const nextRows = parseEditorRows(draft);
+    const nextTargets = nextRows.flatMap((row, rowIndex) => mode === "line"
+      ? [{ rowIndex, t: row.t }]
+      : row.tokens.map((word, wordIndex) => ({ rowIndex, wordIndex, t: word.t })));
+    const c = nextTargets.findIndex((target) => target.t == null);
+    commit(nextRows, c < 0 ? nextTargets.length : c);
+    setStage("sync");
   };
-  const toText = () => { setDraft(rowsText(rows, false)); setTab("text"); };
+  const toText = () => { setDraft(editorRowsText(rows)); setStage("text"); };
 
   R.useEffect(() => {
-    if (tab !== "maker") return;
+    if (stage !== "sync") return;
     const id = setInterval(() => setPos(Spicetify.Player.getProgress()), 250);
     return () => clearInterval(id);
-  }, [tab]);
+  }, [stage]);
 
   R.useEffect(() => {
-    if (tab !== "maker") return;
+    if (stage !== "sync") return;
     const k = (e) => {
       if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
       const a = act.current;
@@ -347,81 +441,141 @@ function Editor(p) {
     };
     window.addEventListener("keydown", k, true);
     return () => window.removeEventListener("keydown", k, true);
-  }, [tab]);
+  }, [stage]);
 
   R.useEffect(() => {
-    const box = list.current, el = box && box.children[cur];
+    const box = list.current, el = box && box.children[cursor];
     if (el) box.scrollTo({ top: el.offsetTop - box.clientHeight / 2 + el.offsetHeight / 2, behavior: "smooth" });
-  }, [cur, tab]);
+  }, [cursor, stage]);
 
-  const stamped = rows.filter((r) => r.t != null).length;
+  const stamped = targets.filter((target) => target.t != null).length;
   let playIdx = -1, bt = -1;
-  rows.forEach((r, k) => { if (r.t != null && r.t <= pos && r.t >= bt) { bt = r.t; playIdx = k; } });
-  const save = () => p.onSave(tab === "maker" ? rowsText(rows, true) : draft);
+  targets.forEach((target, k) => { if (target.t != null && target.t <= pos && target.t >= bt) { bt = target.t; playIdx = k; } });
+  const save = () => p.onSave(stage === "text" ? draft : editorRowsText(rows));
 
-  const tabs = h("div", { className: "oyaa-row", style: { justifyContent: "flex-start" } },
-    h("button", { className: "oyaa-btn" + (tab === "text" ? " on" : ""), onClick: () => tab !== "text" && toText() }, "text"),
-    h("button", { className: "oyaa-btn" + (tab === "maker" ? " on" : ""), onClick: () => tab !== "maker" && toMaker() }, "lrc maker"));
+  const tabs = h("div", { className: "ll-editor-steps" },
+    ["text", "sync", "preview"].map((item, index) => h("button", {
+      key: item,
+      className: "ll-editor-step" + (stage === item ? " active" : ""),
+      onClick: () => {
+        if (item === "text") toText();
+        else if (item === "sync") beginSync();
+        else {
+          if (stage === "text") {
+            const parsed = parseEditorRows(draft);
+            commit(parsed, 0);
+          }
+          setStage("preview");
+        }
+      }
+    }, (index + 1) + " · " + item)));
   const foot = h("div", { className: "oyaa-row" },
-    h("button", { className: "oyaa-btn", onClick: p.onReset }, "use spotify lyrics"),
+    h("button", { className: "oyaa-btn", onClick: p.onReset }, "use live lyrics"),
     h("button", { className: "oyaa-btn", onClick: p.onCancel }, "cancel"),
     h("button", { className: "oyaa-btn on", onClick: save }, "save"));
 
-  if (tab === "text")
-    return h("div", { className: "oyaa-modal" }, tabs,
+  if (stage === "text")
+    return h("div", { className: "oyaa-modal ll-sync-editor" },
+      h("div", { className: "ll-editor-heading" },
+        h("div", null, h("strong", null, "Sync Editor"), h("span", null, trackLabel(p.track))),
+        tabs),
       h("div", { className: "oyaa-hint" },
-        "Paste lyrics. With timestamps like [01:23.45] text they sync exactly. Plain lines (no timestamps) are spread evenly across the song. Word timing like [01:23.45] <01:23.45>one <01:23.90>two is supported too. Use LRC MAKER to stamp the lines while the song plays."),
-      h("textarea", { value: draft, onChange: (e) => setDraft(e.target.value), spellCheck: false, placeholder: "[00:12.00] first line\n[00:16.50] second line" }),
+        "Paste lyrics, import timestamped LRC text, then choose Block or Karaoke sync. Karaoke mode stamps each word as the song plays."),
+      h("textarea", { value: draft, onChange: (e) => setDraft(e.target.value), spellCheck: false, placeholder: "Paste lyrics here, one line per lyric." }),
       foot);
 
-  const nxt = cur < rows.length ? rows[cur].text : "";
-  return h("div", { className: "oyaa-modal" }, tabs,
-    h("div", { className: "mk-bar" },
-      h(Clock),
-      h("div", { className: "mk-stat" }, stamped + " / " + rows.length + " stamped"),
-      h("button", { className: "oyaa-btn", onClick: () => Spicetify.Player.seek(0) }, "restart"),
-      h("button", { className: "oyaa-btn", onClick: () => jump(-5000) }, "−5s"),
-      h("button", { className: "oyaa-btn", onClick: () => Spicetify.Player.togglePlay() }, "play / pause"),
-      h("button", { className: "oyaa-btn", onClick: () => jump(5000) }, "+5s")),
-    h("div", { className: "mk-bar" },
-      h("button", { className: "oyaa-btn big", onClick: tap, disabled: !rows.length || cur >= rows.length }, cur >= rows.length && rows.length ? "done" : "tap · enter"),
-      h("button", { className: "oyaa-btn", onClick: undo }, "undo · ⌫"),
-      h("div", { className: "mk-next" }, nxt ? "next: " + nxt : rows.length ? "all lines stamped, press SAVE" : "Paste lyrics in the TEXT tab first")),
-    h("div", { className: "mk-list", ref: list },
-      rows.map((r, k) => h("div", { key: k, className: "mk-row" + (k === cur ? " cur" : "") + (k === playIdx ? " play" : ""), onClick: () => pick(k) },
-        h("span", { className: "mk-t" + (r.t == null ? " none" : "") }, r.t == null ? "--:--.--" : fmt(r.t).slice(1, -1)),
-        h("span", { className: "mk-x" }, r.text),
-        r.t != null && h("span", { className: "mk-nudge" },
-          h("button", { className: "mk-n", title: "0.1s earlier", onClick: (e) => { e.stopPropagation(); nudge(k, -100); } }, "−"),
-          h("button", { className: "mk-n", title: "0.1s later", onClick: (e) => { e.stopPropagation(); nudge(k, 100); } }, "+"))))),
-    h("div", { className: "oyaa-hint" },
-      "Play the song and press ENTER (or TAP) the moment each line starts. ⌫ removes the last stamp and rewinds 2.5s so you can redo it. Click a line to re-stamp it, − / + nudges it by 0.1s. Taps are placed 0.15s early to cover your reaction time." +
-      (stamped && stamped < rows.length ? " Lines without a stamp are left out when you save." : "")),
-    foot);
+  const nxt = cursor < targets.length ? targets[cursor].text : "";
+  const content = stage === "preview"
+    ? h("div", { className: "ll-editor-preview" },
+        rows.map((row, i) => h("div", { key: i, className: "ll-preview-line" },
+          h("time", null, fmt(row.t != null ? row.t : (row.tokens.find((word) => word.t != null) || {}).t || 0).slice(1, -1)),
+          row.text)))
+    : h("div", { className: "ll-editor-sync-body" },
+        h("div", { className: "ll-editor-mode-switch" },
+          ["line", "word"].map((item) => h("button", {
+            key: item,
+            className: "oyaa-btn" + (mode === item ? " on" : ""),
+            onClick: () => { setMode(item); setCursor(0); }
+          }, item === "line" ? "block sync" : "karaoke sync"))),
+        h("div", { className: "mk-bar" },
+          h(Clock),
+          h("div", { className: "mk-stat" }, stamped + " / " + targets.length + (mode === "line" ? " lines synced" : " words synced")),
+          h("button", { className: "oyaa-btn", onClick: () => Spicetify.Player.seek(0) }, "restart"),
+          h("button", { className: "oyaa-btn", onClick: () => jump(-5000) }, "−5s"),
+          h("button", { className: "oyaa-btn", onClick: () => Spicetify.Player.togglePlay() }, "play / pause"),
+          h("button", { className: "oyaa-btn", onClick: () => jump(5000) }, "+5s")),
+        h("div", { className: "mk-bar" },
+          h("button", { className: "oyaa-btn big", onClick: tap, disabled: !targets.length || cursor >= targets.length }, cursor >= targets.length && targets.length ? "done" : "tap · enter"),
+          h("button", { className: "oyaa-btn", onClick: undo }, "undo · ⌫"),
+          h("div", { className: "mk-next" }, nxt ? "next: " + nxt : rows.length ? "all lines stamped, press SAVE" : "Paste lyrics in the TEXT tab first")),
+        h("div", { className: "mk-list", ref: list },
+          targets.map((target, k) => h("div", { key: k, className: "mk-row" + (k === cursor ? " cur" : "") + (k === playIdx ? " play" : ""), onClick: () => pick(k) },
+            h("span", { className: "mk-t" + (target.t == null ? " none" : "") }, target.t == null ? "--:--.--" : fmt(target.t).slice(1, -1)),
+            h("span", { className: "mk-x" }, target.text),
+            target.t != null && h("span", { className: "mk-nudge" },
+              h("button", { className: "mk-n", title: "0.1s earlier", onClick: (e) => { e.stopPropagation(); nudge(k, -100); } }, "−"),
+              h("button", { className: "mk-n", title: "0.1s later", onClick: (e) => { e.stopPropagation(); nudge(k, 100); } }, "+"))))),
+        h("div", { className: "oyaa-hint" },
+          mode === "line"
+            ? "Play the song and press ENTER (or TAP) when each line starts. Click a line to seek; use − / + to adjust its timestamp."
+            : "Play the song and press ENTER (or TAP) on every sung word. Use ⌫ to undo and rewind, or click a word to seek and adjust it."),
+        foot);
+  return h("div", { className: "oyaa-modal ll-sync-editor" },
+    h("div", { className: "ll-editor-heading" },
+      h("div", null, h("strong", null, "Sync Editor"), h("span", null, trackLabel(p.track))),
+      tabs),
+    content,
+    stage === "preview" && h("div", { className: "ll-editor-preview-actions" },
+      h("button", { className: "oyaa-btn", onClick: () => setStage("sync") }, "back to sync"),
+      foot));
 }
+
+function trackLabel(track) { return track ? track.name + " · " + track.artist : "No track playing"; }
 
 function LiquidSettings(p) {
   const R = Spicetify.React, h = R.createElement;
   return h("div", { className: "oyaa-settings", role: "dialog", "aria-label": "Liquid lyrics settings" },
     h("div", { className: "oyaa-settings-head" },
-      h("strong", null, "lyrics settings"),
+      h("strong", null, "Liquid Lyrics settings"),
       h("button", { className: "oyaa-btn ghost", onClick: p.onClose, "aria-label": "Close settings" }, "×")),
+    h("div", { className: "ll-settings-section" }, "Background"),
     h("label", { className: "oyaa-setting" },
-      h("span", null, "animated album background"),
+      h("span", null, "animated cover-art background"),
       h("input", { type: "checkbox", checked: p.background, onChange: (e) => p.onBackground(e.target.checked) })),
     h("label", { className: "oyaa-setting oyaa-setting-range" },
       h("span", null, "background blur"),
       h("input", { type: "range", min: 0, max: 48, step: 2, value: p.blur, onChange: (e) => p.onBlur(+e.target.value) }),
       h("output", null, p.blur + "px")),
+    h("label", { className: "oyaa-setting oyaa-setting-range" },
+      h("span", null, "background opacity"),
+      h("input", { type: "range", min: 10, max: 80, step: 5, value: p.opacity, onChange: (e) => p.onOpacity(+e.target.value) }),
+      h("output", null, p.opacity + "%")),
+    h("div", { className: "ll-settings-section" }, "Lyrics"),
+    h("label", { className: "oyaa-setting" },
+      h("span", null, "display"),
+      h("select", { value: p.lyricStyle, onChange: (e) => p.onLyricStyle(e.target.value) },
+        h("option", { value: "karaoke" }, "Karaoke"),
+        h("option", { value: "block" }, "Block"))),
+    h("label", { className: "oyaa-setting oyaa-setting-range" },
+      h("span", null, "lyric size"),
+      h("input", { type: "range", min: 22, max: 56, step: 2, value: p.lyricSize, onChange: (e) => p.onLyricSize(+e.target.value) }),
+      h("output", null, p.lyricSize + "px")),
+    h("label", { className: "oyaa-setting" },
+      h("span", null, "smooth scrolling"),
+      h("input", { type: "checkbox", checked: p.smoothScroll, onChange: (e) => p.onSmoothScroll(e.target.checked) })),
+    h("label", { className: "oyaa-setting oyaa-setting-range" },
+      h("span", null, "track sync offset"),
+      h("input", { type: "range", min: -10000, max: 10000, step: 100, value: p.offset, onChange: (e) => p.onOffset(+e.target.value) }),
+      h("output", null, (p.offset > 0 ? "+" : "") + (p.offset / 1000).toFixed(1) + "s")),
     h("div", { className: "oyaa-settings-note" },
-      "Create and edit synced lyrics in EDIT LYRICS → LRC MAKER. Background uses the current track artwork."));
+      "Settings save on this device. Use SYNC EDITOR to create or edit block and word-level timing for this track."));
 }
 
 /* ---------- app ---------- */
 
 function App() {
   const R = Spicetify.React, h = R.createElement;
-  const cv = R.useRef(null), lyr = R.useRef(null);
+  const root = R.useRef(null), cv = R.useRef(null), lyr = R.useRef(null);
   const [lines, setLines] = R.useState([]);
   const [src, setSrc] = R.useState("none");
   const [ana, setAna] = R.useState("wait");
@@ -431,8 +585,14 @@ function App() {
   const [romanStatus, setRomanStatus] = R.useState("idle");
   const [romanError, setRomanError] = R.useState("");
   const savedBackgroundBlur = Number(localStorage.getItem(LS_BB));
+  const savedBackgroundOpacity = Number(localStorage.getItem(LS_BO));
+  const savedLyricsSize = Number(localStorage.getItem(LS_LF));
   const [background, setBackground] = R.useState(localStorage.getItem(LS_BG) !== "0");
   const [backgroundBlur, setBackgroundBlur] = R.useState(localStorage.getItem(LS_BB) === null || !Number.isFinite(savedBackgroundBlur) ? 24 : clamp(savedBackgroundBlur, 0, 48));
+  const [backgroundOpacity, setBackgroundOpacity] = R.useState(localStorage.getItem(LS_BO) === null || !Number.isFinite(savedBackgroundOpacity) ? 48 : clamp(savedBackgroundOpacity, 10, 80));
+  const [lyricStyle, setLyricStyle] = R.useState(localStorage.getItem(LS_LS) === "block" ? "block" : "karaoke");
+  const [smoothScroll, setSmoothScroll] = R.useState(localStorage.getItem(LS_SCR) !== "0");
+  const [lyricSize, setLyricSize] = R.useState(localStorage.getItem(LS_LF) === null || !Number.isFinite(savedLyricsSize) ? 42 : clamp(savedLyricsSize, 22, 56));
   const [cinema, setCinema] = R.useState(localStorage.getItem(LS_CM) === "1");
   const [fullscreen, setFullscreen] = R.useState(!!document.fullscreenElement);
   const [settings, setSettings] = R.useState(false);
@@ -484,8 +644,8 @@ function App() {
       let L = null, s = "none";
       if (saved) { L = parseText(saved, track.dur); s = "custom"; }
       else if (track.uri.startsWith("spotify:track:")) {
-        L = await fetchSpotify(track.uri.split(":")[2], track.dur);
-        if (L) s = "spotify";
+        L = await fetchLiquidLyrics(track.uri.split(":")[2], track.dur);
+        if (L) s = "live";
       }
       if (dead) return;
       setLines(L || []); setSrc(L && L.length ? s : "none");
@@ -643,7 +803,7 @@ function App() {
         const old = s.lidx;
         if (old >= 0 && els[old]) els[old].style.removeProperty("--e");
         s.lidx = i; s.widx = -2; s.lastP = -1; s.lastE = -1;
-        for (let k = 0; k < els.length; k++) els[k].className = "ln" + (k < i ? " past" : k === i ? " active" : "");
+        for (let k = 0; k < els.length; k++) els[k].className = "ll-line" + (k < i ? " past" : k === i ? " active" : "");
         const el = els[Math.max(0, i)];
         if (el) box.style.transform = `translateY(${box.parentElement.clientHeight / 2 - (el.offsetTop + el.offsetHeight / 2)}px)`;
       }
@@ -656,7 +816,7 @@ function App() {
       if (j !== s.widx) {
         if (j >= 0 && j > s.widx) s.flash = 1; // a new word starts: flash
         s.widx = j; s.lastP = -1;
-        for (let k = 0; k < sp.length; k++) sp[k].className = "w" + (k < j ? " d" : k === j ? " c" : "");
+        for (let k = 0; k < sp.length; k++) sp[k].className = "ll-word" + (k < j ? " d" : k === j ? " c" : "");
         if (j >= 0 && sp[j]) {
           sp[j].style.setProperty("--p", "0");
           sp[j].style.setProperty("--lift", "2px");
@@ -700,6 +860,10 @@ function App() {
   const setRoman = (enabled) => { setRomanize(enabled); store(LS_R, enabled ? "1" : "0"); };
   const setBackgroundEnabled = (enabled) => { setBackground(enabled); store(LS_BG, enabled ? "1" : "0"); };
   const setBlur = (value) => { setBackgroundBlur(value); store(LS_BB, String(value)); };
+  const setBackgroundAlpha = (value) => { setBackgroundOpacity(value); store(LS_BO, String(value)); };
+  const setLyricsStyle = (value) => { setLyricStyle(value); store(LS_LS, value); };
+  const setScrollEnabled = (enabled) => { setSmoothScroll(enabled); store(LS_SCR, enabled ? "1" : "0"); };
+  const setLyricsSize = (value) => { setLyricSize(value); store(LS_LF, String(value)); };
   const toggleCinema = () => {
     const next = !cinema;
     setCinema(next);
@@ -708,7 +872,7 @@ function App() {
   const toggleFullscreen = async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
-      else await document.documentElement.requestFullscreen();
+      else if (root.current) await root.current.requestFullscreen();
       setViewError("");
     } catch (e) {
       console.error("oyaa-viz fullscreen error", e);
@@ -722,7 +886,7 @@ function App() {
   const openEdit = () => {
     if (!track) return;
     const saved = localStorage.getItem(LS_L + track.uri);
-    setEdit(saved || (lines.length ? lines.map((l) => fmt(l.t) + " " + l.words).join("\n") : ""));
+    setEdit(saved || (lines.length ? lyricTextForEditor(lines) : ""));
   };
   const save = (text) => {
     store(LS_L + track.uri, text.trim() ? text : null);
@@ -738,8 +902,13 @@ function App() {
   ].filter(Boolean).join("  |  ");
 
   return h("div", {
-    className: "oyaa " + mode + (background && track && track.artwork ? " has-background" : "") + (cinema ? " cinema" : ""),
-    style: { "--oyaa-bg-blur": backgroundBlur + "px" }
+    ref: root,
+    className: "oyaa liquid-lyrics-app " + mode + (background && track && track.artwork ? " has-background" : "") + (cinema ? " cinema" : "") + (lyricStyle === "block" ? " block-lyrics" : "") + (!smoothScroll ? " still-scroll" : ""),
+    style: {
+      "--oyaa-bg-blur": backgroundBlur + "px",
+      "--oyaa-bg-opacity": backgroundOpacity / 100,
+      "--ll-lyrics-size": lyricSize + "px"
+    }
   },
     h("div", {
       className: "oyaa-backdrop",
@@ -765,7 +934,7 @@ function App() {
         "aria-pressed": romanize,
         onClick: () => setRoman(!romanize)
       }, "roman"),
-      h("button", { className: "oyaa-btn", onClick: openEdit }, "edit lyrics"),
+      h("button", { className: "oyaa-btn", onClick: openEdit }, "sync editor"),
       h("button", {
         className: "oyaa-btn oyaa-cinema-toggle" + (cinema ? " on" : ""),
         onClick: toggleCinema,
@@ -788,23 +957,33 @@ function App() {
         h("div", { className: "oyaa-viz", "aria-label": "Audio visualizer" }, h("canvas", { ref: cv })),
         h("div", { className: "oyaa-name" }, track ? track.name : "nothing playing"),
         h("div", { className: "oyaa-artist" }, track ? track.artist : "")),
-        h("div", { className: "oyaa-lyrics" },
+        h("div", { className: "liquid-lyrics-panel" },
           lines.length
-          ? h("div", { className: "oyaa-scroll", ref: lyr },
+          ? h("div", { className: "liquid-lyrics-scroll", ref: lyr },
               shownLines.map((l, i) => {
                 const sep = l.sep != null ? l.sep : /\s/.test(l.words) ? " " : "";
-                return h("div", { key: track.uri + "|" + rev + "|" + i, className: "ln", onClick: () => Spicetify.Player.seek(Math.max(0, l.t + st.current.off)) },
-                  l.w.flatMap((w, j) => (j && sep ? [sep, h("span", { key: j, className: "w" }, w.s)] : [h("span", { key: j, className: "w" }, w.s)])));
+                return h("div", { key: track.uri + "|" + rev + "|" + i, className: "ll-line", onClick: () => Spicetify.Player.seek(Math.max(0, l.t + st.current.off)) },
+                  l.w.flatMap((w, j) => (j && sep ? [sep, h("span", { key: j, className: "ll-word" }, w.s)] : [h("span", { key: j, className: "ll-word" }, w.s)])));
               }))
-          : h("div", { className: "oyaa-empty" }, track ? "No lyrics found. Press EDIT LYRICS to add your own." : "Play a song to start."))),
+          : h("div", { className: "liquid-lyrics-empty" }, track ? "No lyrics found. Use SYNC EDITOR to create lyrics for this track." : "Play a song to start."))),
     settings && h(LiquidSettings, {
       background,
       blur: backgroundBlur,
+      opacity: backgroundOpacity,
+      lyricStyle,
+      lyricSize,
+      smoothScroll,
+      offset: off,
       onBackground: setBackgroundEnabled,
       onBlur: setBlur,
+      onOpacity: setBackgroundAlpha,
+      onLyricStyle: setLyricsStyle,
+      onLyricSize: setLyricsSize,
+      onSmoothScroll: setScrollEnabled,
+      onOffset: (value) => { setOff(value); if (uri) store(LS_O + uri, value ? String(value) : null); },
       onClose: () => setSettings(false)
     }),
-    edit !== null && h(Editor, { key: uri, initial: edit, onSave: save, onReset: reset, onCancel: () => setEdit(null) }));
+    edit !== null && h(LiquidSyncEditor, { key: uri, initial: edit, track, onSave: save, onReset: reset, onCancel: () => setEdit(null) }));
 }
 
 
