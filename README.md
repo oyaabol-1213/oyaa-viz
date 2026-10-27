@@ -38,6 +38,8 @@
 
 - Glitch spectrum visualizer with "oyaa-viz" inside, switch between **red** and **white**  
 - Synced lyrics from Spotify with **word-by-word karaoke**: the word being sung fills left to right and glows  
+- Optional persistent **ROMAN** toggle for Japanese, Korean, and Chinese lyrics, with karaoke timing retained
+- Romanization is fetched from Google Translate only when enabled; the lyric text is sent to Google, not Spotify credentials, account details, or track IDs
 - The glow pulses with the music, and flashes on every new word  
 - **RED** / **WHITE** recolor the visualizer *and* the lyrics  
 - Built-in **LRC maker**: stamp your own lyrics while the song plays  
@@ -99,6 +101,9 @@ Spotify restarts, and you'll see the **oyaa-viz** icon in the left sidebar.
 3. Lyrics from Spotify show automatically and follow the song.  
 4. Click a lyric line to seek to that part of the song.  
 5. Lyrics too early or too late? Use **−** / **+** in the top bar (0.1s per click). The number resets it. It is saved per song.
+6. For Japanese, Korean, or Chinese lyrics, turn on **ROMAN** to show romanized text. The preference is saved. Romanization sends lyric text only to Google Translate; it does not send Spotify credentials, account details, or track IDs. Turning ROMAN off keeps the original script visible.
+
+Romanization requests are opt-in and use Google Translate's public endpoint. Google receives the selected lyric text and detected source language to produce romanization. If the request fails, the original lyrics remain available.
 
 ### Adding your own lyrics
 

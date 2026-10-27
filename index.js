@@ -1,10 +1,11 @@
 var __oyaaViz = (function () {
 // oyaa-viz — Spicetify custom app
-const LS_L = "oyaa-viz:lyrics:", LS_C = "oyaa-viz:color", LS_O = "oyaa-viz:offset:", N = 48, LAG = 150;
+const LS_L = "oyaa-viz:lyrics:", LS_C = "oyaa-viz:color", LS_O = "oyaa-viz:offset:", LS_R = "oyaa-viz:roman", N = 48, LAG = 150;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const tms = (m, s) => (+m * 60 + parseFloat(String(s).replace(":", "."))) * 1000;
 const isSp = (c) => /\s/.test(c);
 const store = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
+const romanCache = new Map();
 
 /* ---------- time + word timing ---------- */
 
@@ -16,6 +17,104 @@ function bpmOf(uri) {
   let h = 0;
   for (let i = 0; i < uri.length; i++) h = (h * 31 + uri.charCodeAt(i)) | 0;
   return 92 + (Math.abs(h) % 48);
+}
+function lyricLanguage(text) {
+  if (/[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/.test(text)) return "ko";
+  if (/[\u3040-\u30ff\u31f0-\u31ff]/.test(text)) return "ja";
+  if (/[\u3400-\u4dbf\u4e00-\u9fff]/.test(text)) return "zh-CN";
+  return null;
+}
+function splitWords(text, lang) {
+  if (/\s/.test(text) || !lyricLanguage(text)) return text.split(/\s+/).filter(Boolean);
+  const locale = lang || lyricLanguage(text);
+  if (typeof Intl !== "undefined" && typeof Intl.Segmenter === "function") {
+    const segments = new Intl.Segmenter(locale, { granularity: "word" }).segment(text);
+    const words = [];
+    for (const part of segments) {
+      if (/^\s+$/.test(part.segment)) continue;
+      if (part.isWordLike) words.push(part.segment);
+      else if (words.length) words[words.length - 1] += part.segment;
+      else words.push(part.segment);
+    }
+    if (words.length > 1) return words;
+    if (locale === "ko" && Array.from(text).length > 1) return Array.from(text);
+    if (words.length) return words;
+  }
+  return Array.from(text).filter((part) => !/\s/.test(part));
+}
+function splitTimedWords(words) {
+  return words.flatMap((word, i) => {
+    const parts = splitWords(word.s);
+    if (parts.length < 2) return [word];
+    const end = words[i + 1] ? words[i + 1].t : word.t + clamp(word.s.length * 120, 350, 1500);
+    const total = parts.reduce((sum, part) => sum + part.length, 0);
+    let consumed = 0;
+    return parts.map((part) => {
+      const start = word.t + ((end - word.t) * consumed) / total;
+      consumed += part.length;
+      const finish = word.t + ((end - word.t) * consumed) / total;
+      return { t: start, e: Math.max(finish, start + 1), s: part };
+    });
+  });
+}
+function lyricsVersion(lines) {
+  return JSON.stringify(lines.map((line) => [line.words, line.t, line.end]));
+}
+function parseRomanization(data, original) {
+  const candidates = [];
+  const visit = (value) => {
+    if (typeof value === "string") candidates.push(value.trim());
+    else if (Array.isArray(value)) value.forEach(visit);
+  };
+  visit(data);
+  const roman = candidates.find((value) =>
+    value && value !== original && /[A-Za-z]/.test(value) &&
+    !/^[a-z]{2}(?:-[A-Z]{2})?$/.test(value) &&
+    !/[\u1100-\u11ff\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(value));
+  if (!roman) throw new Error("Google Translate did not return romanization.");
+  return roman;
+}
+async function fetchRomanization(text, lang, signal) {
+  const query = new URLSearchParams({ client: "gtx", sl: lang, tl: lang, dt: "t", q: text });
+  query.append("dt", "rm");
+  const response = await fetch("https://translate.googleapis.com/translate_a/single?" + query.toString(), {
+    credentials: "omit",
+    referrerPolicy: "no-referrer",
+    signal
+  });
+  if (!response.ok) throw new Error("Google Translate request failed (" + response.status + ").");
+  return parseRomanization(await response.json(), text);
+}
+async function fetchRomanizedLines(lines, lang, signal) {
+  const result = Array(lines.length), workers = [];
+  let next = 0;
+  for (let n = 0; n < Math.min(4, lines.length); n++) {
+    workers.push((async () => {
+      while (next < lines.length) {
+        const i = next++;
+        result[i] = lyricLanguage(lines[i].words)
+          ? await fetchRomanization(lines[i].words, lang, signal)
+          : lines[i].words;
+      }
+    })());
+  }
+  await Promise.all(workers);
+  return result;
+}
+function alignRomanized(text, original, lineEnd) {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (!words.length) return original;
+  if (!original.length) return estWords(text, 0, lineEnd);
+  const timeAt = (progress) => {
+    const position = progress * original.length;
+    if (position >= original.length) return original[original.length - 1].e;
+    const index = Math.floor(position), fraction = position - index, word = original[index];
+    return word.t + (word.e - word.t) * fraction;
+  };
+  return words.map((word, i) => {
+    const t = timeAt(i / words.length), e = timeAt((i + 1) / words.length);
+    return { t, e: Math.max(e, t + 1), s: word };
+  });
 }
 // glue text chunks that belong to the same word (syllables) into words
 function addChunk(out, st, t, s) {
@@ -44,7 +143,7 @@ function fromSyl(text, syl) {
     else { s = ch.slice(p, p + n).join(""); p += n; }
     addChunk(out, st, t, s);
   }
-  return out.length ? out : null;
+  return out.length ? splitTimedWords(out) : null;
 }
 // enhanced LRC: [00:12.00] <00:12.00>First <00:12.40>word
 function fromTags(s, t0) {
@@ -53,12 +152,12 @@ function fromTags(s, t0) {
   const out = [], st = { nw: true };
   addChunk(out, st, t0, parts[0]);
   for (let i = 1; i + 2 < parts.length; i += 3) addChunk(out, st, tms(parts[i], parts[i + 1]), parts[i + 2] || "");
-  return out.length ? out : null;
+  return out.length ? splitTimedWords(out) : null;
 }
 // no word timing available: spread the words over the part of the line that is really sung
 function estWords(text, t0, t1) {
   if (text === "♪") return [{ t: t0, e: Math.max(t1, t0 + 1), s: text }];
-  const ws = text.split(/\s+/).filter(Boolean);
+  const ws = splitWords(text);
   if (!ws.length) return [];
   const chars = ws.reduce((a, w) => a + w.length, 0), gap = Math.max(1, t1 - t0);
   const sing = Math.min(gap, clamp(gap * 0.7, chars * 80, chars * 170)), tot = chars + ws.length;
@@ -100,7 +199,7 @@ function parseText(text, dur) {
     const rest = l.replace(re, "").trim();
     for (const t of tags) {
       const t0 = tms(t[1], t[2]), tw = fromTags(rest, t0);
-      out.push({ t: t0, tw, words: tw ? tw.map((x) => x.s).join(" ") : rest.replace(/<[^>]*>/g, "").trim() || "♪" });
+      out.push({ t: t0, tw, words: rest.replace(/<[^>]*>/g, "").trim() || "♪" });
     }
   }
   if (timed) return finish(out, dur);
@@ -135,7 +234,7 @@ async function fetchSpotify(id, dur) {
     if (L.syncType === "LINE_SYNCED" || L.syncType === "SYLLABLE_SYNCED")
       return finish(L.lines.map((l) => {
         const raw = l.words || "", tw = raw.trim() ? fromSyl(raw, l.syllables) : null;
-        return { t: +l.startTimeMs, tw, words: tw ? tw.map((x) => x.s).join(" ") : raw.trim() || "♪" };
+        return { t: +l.startTimeMs, tw, words: raw.trim() || "♪" };
       }), dur);
     return spread(L.lines.map((l) => l.words).filter(Boolean), dur);
   } catch (e) { return null; }
@@ -301,6 +400,10 @@ function App() {
   const [src, setSrc] = R.useState("none");
   const [ana, setAna] = R.useState("wait");
   const [mode, setMode] = R.useState(localStorage.getItem(LS_C) === "white" ? "white" : "red");
+  const [romanize, setRomanize] = R.useState(localStorage.getItem(LS_R) === "1");
+  const [romanText, setRomanText] = R.useState(null);
+  const [romanStatus, setRomanStatus] = R.useState("idle");
+  const [romanError, setRomanError] = R.useState("");
   const [edit, setEdit] = R.useState(null);
   const [track, setTrack] = R.useState(getTrack());
   const [rev, setRev] = R.useState(0);
@@ -351,10 +454,54 @@ function App() {
     return () => { dead = true; };
   }, [uri, rev]);
 
+  const textVersion = lyricsVersion(lines);
+  const lang = lyricLanguage(lines.map((line) => line.words).join("\n"));
+  const romanSupported = !!lang;
+  R.useEffect(() => {
+    let dead = false;
+    const controller = new AbortController();
+    setRomanText(null);
+    setRomanError("");
+    setRomanStatus("idle");
+    if (!romanize || !lang || !lines.length || !uri) return () => controller.abort();
+    const key = uri + "\n" + lang + "\n" + textVersion;
+    if (romanCache.has(key)) {
+      setRomanText(romanCache.get(key));
+      setRomanStatus("ready");
+      return () => controller.abort();
+    }
+    setRomanStatus("loading");
+    (async () => {
+      try {
+        const result = await fetchRomanizedLines(lines, lang, controller.signal);
+        if (dead) return;
+        romanCache.set(key, result);
+        if (romanCache.size > 16) romanCache.delete(romanCache.keys().next().value);
+        setRomanText(result);
+        setRomanStatus("ready");
+      } catch (e) {
+        if (dead || controller.signal.aborted) return;
+        controller.abort();
+        setRomanError(e && e.message ? e.message : "Could not romanize these lyrics.");
+        setRomanStatus("error");
+      }
+    })();
+    return () => { dead = true; controller.abort(); };
+  }, [uri, textVersion, lang, romanize]);
+
+  const shownLines = R.useMemo(() => {
+    if (!romanize || !romanText || romanText.length !== lines.length) return lines;
+    return lines.map((line, i) => ({
+      ...line,
+      sep: lyricLanguage(line.words) ? " " : "",
+      w: lyricLanguage(line.words) ? alignRomanized(romanText[i], line.w, line.end) : line.w
+    }));
+  }, [lines, romanize, romanText]);
+
   R.useEffect(() => {
     const s = st.current;
-    s.lines = lines; s.lidx = -99; s.widx = -2; s.lastP = -1; s.lastE = -1;
-  }, [lines]);
+    s.lines = shownLines; s.lidx = -99; s.widx = -2; s.lastP = -1; s.lastE = -1;
+  }, [shownLines]);
 
   R.useEffect(() => {
     const c = cv.current, ctx = c.getContext("2d", { alpha: false }), s = st.current;
@@ -502,6 +649,7 @@ function App() {
   }, []);
 
   const setColor = (m) => { setMode(m); store(LS_C, m); };
+  const setRoman = (enabled) => { setRomanize(enabled); store(LS_R, enabled ? "1" : "0"); };
   const bump = (d) => {
     const v = d === 0 ? 0 : clamp(Math.round((off + d) / 10) * 10, -10000, 10000);
     setOff(v); if (uri) store(LS_O + uri, v ? String(v) : null);
@@ -517,28 +665,46 @@ function App() {
   };
   const reset = () => { store(LS_L + track.uri, null); setEdit(null); setRev((r) => r + 1); };
 
-  const title = [src !== "none" ? "lyrics · " + src : "no lyrics", ana === "ok" ? "spectrum · analysis" : ana === "none" ? "spectrum · generic" : ""].filter(Boolean).join("  |  ");
+  const title = [
+    src !== "none" ? "lyrics · " + src : "no lyrics",
+    ana === "ok" ? "spectrum · analysis" : ana === "none" ? "spectrum · generic" : "",
+    romanStatus === "loading" ? "romanizing lyrics…" : romanStatus === "error" ? "romanization failed" : ""
+  ].filter(Boolean).join("  |  ");
 
   return h("div", { className: "oyaa " + mode },
     h("div", { className: "oyaa-top" },
-      h("div", { className: "oyaa-title" }, title),
+      h("div", {
+        className: "oyaa-title",
+        title: romanStatus === "error" ? romanError : "",
+        role: romanStatus === "loading" || romanStatus === "error" ? "status" : null,
+        "aria-live": romanStatus === "loading" || romanStatus === "error" ? "polite" : null
+      }, title),
       h("div", { className: "oyaa-sync", title: "Lyric timing for this song. + shows lyrics later, − earlier. Click the number to reset." },
         h("button", { className: "oyaa-btn", onClick: () => bump(-100) }, "−"),
         h("button", { className: "oyaa-btn ghost", onClick: () => bump(0) }, (off > 0 ? "+" : "") + (off / 1000).toFixed(1) + "s"),
         h("button", { className: "oyaa-btn", onClick: () => bump(100) }, "+")),
       h("button", { className: "oyaa-btn" + (mode === "red" ? " on" : ""), onClick: () => setColor("red") }, "red"),
       h("button", { className: "oyaa-btn" + (mode === "white" ? " on" : ""), onClick: () => setColor("white") }, "white"),
+      romanSupported && h("button", {
+        className: "oyaa-btn" + (romanize ? " on" : ""),
+        title: "Sends lyric text to Google Translate for romanization.",
+        "aria-pressed": romanize,
+        onClick: () => setRoman(!romanize)
+      }, "roman"),
       h("button", { className: "oyaa-btn", onClick: openEdit }, "edit lyrics")),
     h("div", { className: "oyaa-body" },
       h("div", { className: "oyaa-left" },
         h("div", { className: "oyaa-viz" }, h("canvas", { ref: cv })),
         h("div", { className: "oyaa-name" }, track ? track.name : "nothing playing"),
         h("div", { className: "oyaa-artist" }, track ? track.artist : "")),
-      h("div", { className: "oyaa-lyrics" },
-        lines.length
+        h("div", { className: "oyaa-lyrics" },
+          lines.length
           ? h("div", { className: "oyaa-scroll", ref: lyr },
-              lines.map((l, i) => h("div", { key: track.uri + "|" + rev + "|" + i, className: "ln", onClick: () => Spicetify.Player.seek(Math.max(0, l.t + st.current.off)) },
-                l.w.flatMap((w, j) => (j ? [" ", h("span", { key: j, className: "w" }, w.s)] : [h("span", { key: j, className: "w" }, w.s)])))))
+              shownLines.map((l, i) => {
+                const sep = l.sep != null ? l.sep : /\s/.test(l.words) ? " " : "";
+                return h("div", { key: track.uri + "|" + rev + "|" + i, className: "ln", onClick: () => Spicetify.Player.seek(Math.max(0, l.t + st.current.off)) },
+                  l.w.flatMap((w, j) => (j && sep ? [sep, h("span", { key: j, className: "w" }, w.s)] : [h("span", { key: j, className: "w" }, w.s)])));
+              }))
           : h("div", { className: "oyaa-empty" }, track ? "No lyrics found. Press EDIT LYRICS to add your own." : "Play a song to start."))),
     edit !== null && h(Editor, { key: uri, initial: edit, onSave: save, onReset: reset, onCancel: () => setEdit(null) }));
 }

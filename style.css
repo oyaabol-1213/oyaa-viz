@@ -63,3 +63,9 @@
 .mk-row:hover .mk-nudge, .mk-row.cur .mk-nudge { opacity: 1; }
 .mk-n { background: transparent; color: #aaa; border: 1px solid #2a2a2a; border-radius: 3px; width: 22px; height: 20px; line-height: 1; cursor: pointer; font-size: 13px; padding: 0; }
 .mk-n:hover { color: #fff; border-color: #666; }
+
+@media (prefers-reduced-motion: reduce) {
+  .oyaa-scroll, .ln { transition: none; }
+  .ln.active .w.d { text-shadow: none; }
+  .ln.active .w.c { filter: none; }
+}
