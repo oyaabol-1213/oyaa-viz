@@ -1,6 +1,6 @@
 {
   "name": "oyaa-viz",
-  "description": "Oyaa-viz spectrum visualizer with Liquid Lyrics-style synced lyrics, word-level sync editor, animated artwork background, cinema/fullscreen modes, and persistent lyrics settings. Optional ROMAN sends lyric text only to Google Translate.",
+  "description": "Oyaa Viz spectrum visualizer with Liquid Lyrics-style synced lyrics, animated artwork background, cinema and fullscreen modes, and red or white lyrics.",
   "repository": "https://github.com/oyaabol-1213/oyaa-viz",
   "preview": "preview.png",
   "readme": "README.md",
@@ -16,8 +16,10 @@
     "amoled",
     "minimal"
   ],
-  "icon": "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M3 10h2v4H3zm4-4h2v12H7zm4-3h2v18h-2zm4 3h2v12h-2zm4 4h2v4h-2z\"/></svg>",
-  "active-icon": "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M3 10h2v4H3zm4-4h2v12H7zm4-3h2v18h-2zm4 3h2v12h-2zm4 4h2v4h-2z\"/></svg>",
+  "icon": "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M2 10h2v4H2zm3-4h2v12H5zm3-3h2v18H8zm3-2h2v22h-2zm3 2h2v18h-2zm3 3h2v12h-2zm3 4h2v4h-2z\"/></svg>",
+  "active-icon": "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M2 10h2v4H2zm3-4h2v12H5zm3-3h2v18H8zm3-2h2v22h-2zm3 2h2v18h-2zm3 3h2v12h-2zm3 4h2v4h-2z\"/></svg>",
   "subfiles": [],
-  "subfiles_extension": []
+  "subfiles_extension": [
+    "oyaa-viz-button.js"
+  ]
 }
