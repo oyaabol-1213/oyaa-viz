@@ -8199,9 +8199,10 @@ RULE:
 :root.oyaa-red .oyaa-viz-panel .oyaa-viz-bg { filter: grayscale(1) sepia(1) hue-rotate(-50deg) saturate(4.5) brightness(.5); }
 :root.oyaa-white .oyaa-viz-panel .oyaa-viz-bg { filter: grayscale(1) brightness(.5); }
 /* the left card slot now holds the visualizer; every original card element is hidden, not removed */
-.oyaa-viz-panel .oyaa-viz-view { --ll-card-w: clamp(240px, min(34cqw, calc(100vh - 300px)), 460px); }
-.oyaa-viz-panel .oyaa-viz-song-card { background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; outline: none !important; padding: 0 !important; }
-.oyaa-viz-panel .oyaa-viz-song-card > *:not(.oyaa-wrap) { display: none !important; }
+#oyaa-viz-panel .oyaa-viz-view { --ll-card-w: clamp(240px, min(34cqw, calc(100vh - 300px)), 460px); }
+#oyaa-viz-panel .oyaa-viz-song-card { background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; outline: none !important; padding: 0 !important; }
+#oyaa-viz-panel .oyaa-viz-song-card > *:not(.oyaa-wrap) { display: none !important; }
+#oyaa-viz-panel .oyaa-viz-song-card::before, #oyaa-viz-panel .oyaa-viz-song-card::after { display: none !important; content: none !important; box-shadow: none !important; border: 0 !important; }
 #oyaa-viz-button { display: none !important; }
 .oyaa-wrap { display: flex; flex-direction: column; width: 100%; min-width: 0; color: #fff; font-family: "Segoe UI", Inter, system-ui, sans-serif; }
 .oyaa-box { position: relative; width: 100%; aspect-ratio: 1 / 1; max-height: calc(100vh - 380px); background: transparent; border: 0; overflow: hidden; }
@@ -8216,22 +8217,26 @@ RULE:
 .oyaa-sp { flex: 1; min-width: 4px; }
 .oyaa-lbl { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: #666; margin-right: 4px; }
 /* ---- layout: visualizer left, lyrics right and left-aligned ---- */
-.oyaa-viz-panel .oyaa-viz-view { --ll-card-w: clamp(240px, min(38cqw, calc(100vh - 300px)), 520px); --ll-lyrics-col: 100%; grid-template-columns: var(--ll-card-col) minmax(0, 1fr); justify-content: start; gap: 40px; padding-left: 28px; padding-right: 20px; }
-.oyaa-viz-panel .oyaa-viz-content { width: 100%; align-items: flex-start; padding-left: 0; padding-right: 8px; }
-.oyaa-viz-panel .oyaa-viz-line { text-align: left; transform-origin: left center; }
+#oyaa-viz-panel .oyaa-viz-view { --ll-card-w: clamp(240px, min(36cqw, calc(100vh - 300px)), 620px); --ll-lyrics-col: 100%; grid-template-columns: var(--ll-card-col) minmax(0, 1fr); justify-content: start; gap: 40px; padding-left: 28px; padding-right: 20px; }
+#oyaa-viz-panel .oyaa-viz-content { width: 100%; align-items: stretch; padding-left: 0; padding-right: 8px; }
+#oyaa-viz-panel .oyaa-viz-line { text-align: left; transform-origin: left center; }
 /* no visualizer controls anywhere */
 .oyaa-viz-panel .ll-card-toggle { display: none !important; }
 /* lyric colours: sung = theme colour, past = dark, upcoming = grey */
 :root.oyaa-red { --oyaa-cd: #6b0d18; }
 :root.oyaa-white { --oyaa-cd: #5c5c5c; }
-.oyaa-viz-panel .oyaa-viz-line.past:not(.active):not(.oyaa-viz-interlude):not(.ll-outgoing), .oyaa-viz-panel .oyaa-viz-line.future:not(.oyaa-viz-interlude) { opacity: 1; }
-.oyaa-viz-panel .oyaa-viz-line.past:not(.ll-finishing):not(.ll-outgoing), .oyaa-viz-panel .oyaa-viz-line.past:not(.ll-finishing):not(.ll-outgoing) .ll-syllable, .oyaa-viz-panel .oyaa-viz-line.past:not(.ll-finishing):not(.ll-outgoing) .ll-letter { -webkit-text-fill-color: var(--oyaa-cd, #6b0d18); }
-.oyaa-viz-panel .oyaa-viz-line.future:not(.oyaa-viz-static), .oyaa-viz-panel .oyaa-viz-line.future:not(.oyaa-viz-static) .ll-syllable, .oyaa-viz-panel .oyaa-viz-line.future:not(.oyaa-viz-static) .ll-letter { -webkit-text-fill-color: rgba(255,255,255,.2); }
-.oyaa-viz-panel[data-card-side="right"] .oyaa-viz-view { grid-template-columns: minmax(0, 1fr) var(--ll-card-col); padding-left: 20px; padding-right: 28px; }
+#oyaa-viz-panel .oyaa-viz-line.past:not(.active):not(.oyaa-viz-interlude):not(.ll-outgoing), #oyaa-viz-panel .oyaa-viz-line.future:not(.oyaa-viz-interlude) { opacity: 1; }
+#oyaa-viz-panel .oyaa-viz-line.past:not(.ll-finishing):not(.ll-outgoing), #oyaa-viz-panel .oyaa-viz-line.past:not(.ll-finishing):not(.ll-outgoing) .ll-syllable, #oyaa-viz-panel .oyaa-viz-line.past:not(.ll-finishing):not(.ll-outgoing) .ll-letter { -webkit-text-fill-color: var(--oyaa-cd, #6b0d18); }
+#oyaa-viz-panel .oyaa-viz-line.future:not(.oyaa-viz-static), #oyaa-viz-panel .oyaa-viz-line.future:not(.oyaa-viz-static) .ll-syllable, #oyaa-viz-panel .oyaa-viz-line.future:not(.oyaa-viz-static) .ll-letter { -webkit-text-fill-color: rgba(255,255,255,.2); }
+#oyaa-viz-panel[data-card-side="right"] .oyaa-viz-view { grid-template-columns: minmax(0, 1fr) var(--ll-card-col); justify-content: start; gap: 40px; padding-left: 20px; padding-right: 28px; }
+#oyaa-viz-panel[data-card-side="right"] .oyaa-viz-song-card { order: 2; justify-self: center; }
+#oyaa-viz-panel[data-card-side="right"] .oyaa-viz-content { order: 1; width: 100%; padding-left: 8px; padding-right: 0; }
 /* the feature buttons live in the header, beside the settings gear */
 .oyaa-viz-header .oyaa-viz-control-pill { position: static !important; left: auto !important; top: auto !important; bottom: auto !important; transform: none !important; opacity: 1 !important; pointer-events: auto !important; height: auto !important; padding: 0 !important; gap: 8px !important; flex-direction: row !important; background: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none !important; outline: none !important; border: 0 !important; transition: none !important; -webkit-app-region: no-drag; }
 .oyaa-viz-header .oyaa-viz-control-pill .ll-pill-transport, .oyaa-viz-header .oyaa-viz-control-pill .ll-pill-divider { display: none !important; }
 .oyaa-top-active svg, .oyaa-top-active { color: #ff2a3d !important; fill: #ff2a3d !important; }
+
+#oyaa-viz-panel .oyaa-viz-song-card, #oyaa-viz-panel .oyaa-viz-song-card *, #oyaa-viz-panel .oyaa-wrap, #oyaa-viz-panel .oyaa-box { outline: 0 !important; box-shadow: none !important; }
 `;
   const ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><rect x="1" y="6" width="2" height="4" rx=".4"/><rect x="4" y="3" width="2" height="10" rx=".4"/><rect x="7" y="1" width="2" height="14" rx=".4"/><rect x="10" y="3" width="2" height="10" rx=".4"/><rect x="13" y="6" width="2" height="4" rx=".4"/></svg>';
 
